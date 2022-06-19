@@ -1,8 +1,8 @@
 [package]
-name = "terra-rust-api-layer"
+name = "cosmos-rust-interface"
 authors = ["Philipp Schlütermann <philipp.schluetermann@udo.edu>"]
-description = "A layer on top of the terra-rust-api to interact with the terra ecosystem."
-version = "0.4.0"
+description = "Base layer to interface with cosmos chains used by cosmos-rust-bot"
+version = "0.5.0"
 edition = "2021"
 
 [lib]
