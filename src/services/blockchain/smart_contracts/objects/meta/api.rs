@@ -4,6 +4,7 @@
  */
 
 pub mod cosmos_rpc;
+pub mod osmosis_rpc;
 pub mod data;
 
 use data::endpoints::{get_terra_fcd, get_terra_lcd, get_terra_chain};

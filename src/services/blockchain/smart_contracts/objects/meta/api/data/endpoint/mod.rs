@@ -4,9 +4,9 @@ use std::time::Duration;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::query_client::QueryClient;
 
 pub async fn get_osmosis_channel() -> anyhow::Result<Channel> {
-    let channel = Channel::from_static("http://46.38.251.100:9090") // Felix | Interbloc
+    //let channel = Channel::from_static("http://46.38.251.100:9090") // Felix | Interbloc
         //let channel = Channel::from_static("http://v-terra-hel-1.zyons.com:29090")
-        //let channel = Channel::from_static("http://osmosis.strange.love:9090")
+        let channel = Channel::from_static("http://osmosis.strange.love:9090")
         //let channel = Channel::from_static("http://cosmoshub.validator.network:443")
         //let channel = Channel::from_static("http://cosmos.chorus.one:26657")
         //let channel = Channel::from_static("http://rpc.cosmos.network:26657")

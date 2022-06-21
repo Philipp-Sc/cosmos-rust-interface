@@ -5,11 +5,6 @@ use cosmos_sdk_proto::cosmwasm::wasm::v1::*;
 use cosmrs::tx::{MsgProto, Msg};
 use prost_types::Any;
 
-use osmosis_proto::custom_cosmrs::{MsgProto as OsmosisMsgProto, Msg as OsmosisMsg};
-
-use osmosis_proto::osmosis::gamm::v1beta1::query_client::QueryClient as OsmosisQueryClient;
-use osmosis_proto::osmosis::gamm::v1beta1::{QueryNumPoolsRequest, QueryNumPoolsResponse, QueryPoolsRequest, QueryPoolsResponse, Pool, QueryPoolRequest, QueryPoolResponse};
-
 use cosmos_sdk_proto::cosmos::auth::v1beta1::query_client::QueryClient as AuthQueryClient;
 use cosmos_sdk_proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest, QueryAccountResponse};
 use cosmos_sdk_proto::cosmos::vesting::v1beta1::{PeriodicVestingAccount};
@@ -17,7 +12,8 @@ use cosmos_sdk_proto::cosmos::vesting::v1beta1::{PeriodicVestingAccount};
 use serde_json;
 use std::str;
 
-use super::endpoint::*;
+
+use super::super::data::endpoint::*;
 
 
 pub async fn get_contract_info(address: String) -> anyhow::Result<QueryContractInfoResponse> {
@@ -32,41 +28,6 @@ pub async fn get_smart_contract_state<T: ?Sized + serde::Serialize>(address: Str
     let res = QueryClient::new(channel).smart_contract_state(QuerySmartContractStateRequest { address, query_data: serde_json::to_vec(query_msg)? }).await?.into_inner();
     //println!("{:?}", &res);
     Ok(res)
-}
-
-pub async fn get_pool_count() -> anyhow::Result<QueryNumPoolsResponse> {
-    let channel = get_osmosis_channel().await?;
-    let res = OsmosisQueryClient::new(channel).num_pools(QueryNumPoolsRequest {}).await?.into_inner();
-    //println!("{:?}", &res.num_pools);
-    Ok(res)
-}
-
-pub async fn get_pools_info() -> anyhow::Result<Vec<Pool>> {
-    let channel = get_osmosis_channel().await?;
-    let res = OsmosisQueryClient::new(channel).pools(QueryPoolsRequest {
-        pagination: Some(PageRequest {
-            key: vec![],
-            offset: 0,
-            limit: 100,
-            count_total: false,
-            reverse: false,
-        })
-    }).await?.into_inner();
-
-    let pools: Vec<Pool> = res.pools.into_iter().map(|x| OsmosisMsgProto::from_any(&x).unwrap()).collect();
-    //println!("{:?}", pools);
-    Ok(pools)
-}
-
-pub async fn get_pool_info(pool_id: u64) -> anyhow::Result<Pool> {
-    let channel = get_osmosis_channel().await?;
-    let res = OsmosisQueryClient::new(channel).pool(QueryPoolRequest {
-        pool_id: pool_id,
-    }).await?.into_inner();
-
-    let pool: Pool = OsmosisMsgProto::from_any(&res.pool.unwrap()).unwrap();
-    //println!("{:?}", pool);
-    Ok(pool)
 }
 
 pub async fn query_account(address: String) -> anyhow::Result<BaseAccount> {

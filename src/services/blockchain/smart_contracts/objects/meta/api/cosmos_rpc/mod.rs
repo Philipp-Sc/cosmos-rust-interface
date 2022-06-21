@@ -45,13 +45,11 @@ use cosmrs::tx::AuthInfo;
 use std::str::FromStr;
 use eyre::anyhow;
 
-mod endpoint;
-
-use endpoint::*;
-
 pub mod query;
 
 use query::*;
+
+use super::data::endpoint::*;
 
 /*
 /// Chain ID to use for tests

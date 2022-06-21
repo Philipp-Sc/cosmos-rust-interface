@@ -4,6 +4,8 @@
  *
  */
 
+// todo: start here, queries!
+
 pub mod objects;
 
 use objects::*;
@@ -53,6 +55,8 @@ use objects::meta::api::data::terra_contracts::AssetWhitelist;
 use std::sync::Arc;
 use secstr::*;
 
+use objects::meta::api::cosmos_rpc::query::get_smart_contract_state;
+
 // https://fcd.terra.dev/wasm/contracts/terra146ahqn6d3qgdvmj8cj96hh03dzmeedhsf0kxqm/store?query_msg={%22latest_stage%22:{}}
 
 
@@ -68,10 +72,17 @@ use secstr::*;
 // {}/wasm/contracts/{}/store?query_msg={} for osmosis? where
 
 // /osmosis/gamm/v1beta1/{poolId}/estimate/swap_exact_amount_in
-/*
+
 pub async fn simulate_swap_ibcs(asset_whitelist: Arc<AssetWhitelist>, dex: String, bid_token_protocol: Option<String>, bid_token: String, ask_token_protocol: Option<String>, ask_token: String) -> anyhow::Result<ResponseResult> {
-    osmo_bindings::Os::
-    osmo_bindings::OsmosisQuery::estimate_swap("cosmos10885ryvnfvu7hjt8lqvge77uderycqcuu5qtd9", 501, "atom", "osmo", osmo_bindings::SwapAmount::In(cosmwasm_std_latest::Uint128::new(501505)));
+
+    let estimate_swap = osmo_bindings::OsmosisQuery::estimate_swap("cosmos10885ryvnfvu7hjt8lqvge77uderycqcuu5qtd9", 501, "atom", "osmo", osmo_bindings::SwapAmount::In(cosmwasm_std_latest::Uint128::new(501505)));
+
+    let query_msg = cw20::Cw20QueryMsg::Balance {
+        address: "terra1vcpt3p9p6rrqaw4zwt706p8vj7uhd0sf4p5snl".to_string()
+    };
+    let res = get_smart_contract_state("terra1ecgazyd0waaj3g7l9cmy5gulhxkps2gmxu9ghducvuypjq68mq2s5lvsct".to_string(), &query_msg).await?;
+
+
     /*
     let coin_a = cosmwasm_std_latest::coin(6_000_000u128, "osmo");
     let coin_b = cosmwasm_std_latest::coin(1_500_000u128, "atom");
@@ -116,7 +127,7 @@ BasicAppBuilder::<OsmosisMsg, OsmosisQuery>::new_custom()
     let expected = osmo_bindings::SwapAmount::In(cosmwasm_std_latest::Uint128::new(501505));*/
     Err(anyhow!("no contract_addr"))
 }
-*/
+
 pub async fn airdrop_is_claimed(asset_whitelist: Arc<AssetWhitelist>, wallet_acc_address: Arc<SecUtf8>, stage: u64) -> anyhow::Result<ResponseResult> {
     let contract_addr = contracts(&asset_whitelist, "Anchor", "Airdrop").ok_or(anyhow!("no contract_addr"))?;
 
