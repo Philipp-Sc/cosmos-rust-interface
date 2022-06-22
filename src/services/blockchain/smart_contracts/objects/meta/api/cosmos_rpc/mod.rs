@@ -391,7 +391,9 @@ mod test {
 
     #[tokio::test]
     pub async fn key_from_account() -> anyhow::Result<()> {
-        let account = super::query_account("terra16f874e52x5704ecrxyg5m9ljfv20cn0hajpng7".to_string()).await?;
+
+        let channel = super::get_terra_channel().await?;
+        let account = super::query_account(channel,"terra16f874e52x5704ecrxyg5m9ljfv20cn0hajpng7".to_string()).await?;
         /*println!("TEST: {}", "query_account(address)");
         println!("{:?}", &account);*/
 

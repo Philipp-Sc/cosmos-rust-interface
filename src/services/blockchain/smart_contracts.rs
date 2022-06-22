@@ -56,6 +56,7 @@ use std::sync::Arc;
 use secstr::*;
 
 use objects::meta::api::cosmos_rpc::query::get_smart_contract_state;
+use objects::meta::api::data::endpoint::get_terra_channel;
 
 // https://fcd.terra.dev/wasm/contracts/terra146ahqn6d3qgdvmj8cj96hh03dzmeedhsf0kxqm/store?query_msg={%22latest_stage%22:{}}
 
@@ -80,7 +81,9 @@ pub async fn simulate_swap_ibcs(asset_whitelist: Arc<AssetWhitelist>, dex: Strin
     let query_msg = cw20::Cw20QueryMsg::Balance {
         address: "terra1vcpt3p9p6rrqaw4zwt706p8vj7uhd0sf4p5snl".to_string()
     };
-    let res = get_smart_contract_state("terra1ecgazyd0waaj3g7l9cmy5gulhxkps2gmxu9ghducvuypjq68mq2s5lvsct".to_string(), &query_msg).await?;
+
+    let channel = get_terra_channel().await?;
+    let res = get_smart_contract_state(channel,"terra1ecgazyd0waaj3g7l9cmy5gulhxkps2gmxu9ghducvuypjq68mq2s5lvsct".to_string(), &query_msg).await?;
 
 
     /*
