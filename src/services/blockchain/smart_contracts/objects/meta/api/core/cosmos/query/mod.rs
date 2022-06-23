@@ -14,8 +14,7 @@ use std::str;
 
 use tonic::transport::Channel;
 
-
-use super::super::data::endpoint::*;
+use crate::services::blockchain::smart_contracts::objects::meta::api::core::cosmos::channels::{terra, osmosis};
 
 use cosmos_sdk_proto::cosmos::gov::v1beta1::query_client::QueryClient as GovQueryClient;
 use cosmos_sdk_proto::cosmos::gov::v1beta1::{QueryProposalRequest, QueryProposalsRequest, QueryProposalsResponse};
@@ -77,44 +76,20 @@ mod test {
 
     #[tokio::test]
     pub async fn get_proposals() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let res = super::get_proposals(channel,cosmos_sdk_proto::cosmos::gov::v1beta1::QueryProposalsRequest{
             proposal_status: 0x03,
             voter: "".to_string(),
             depositor: "".to_string(),
             pagination: None
         }).await?;
-        for proposal in res.proposals {
-            let p = &proposal.content.unwrap();
-            if p.type_url == "/cosmos.gov.v1beta1.TextProposal" {
-                let t: cosmos_sdk_proto::cosmos::gov::v1beta1::TextProposal = cosmrs::tx::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else if p.type_url == "/cosmos.distribution.v1beta1.CommunityPoolSpendProposal" {
-                let t: cosmos_sdk_proto::cosmos::distribution::v1beta1::CommunityPoolSpendProposal = cosmrs::tx::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else if p.type_url == "/cosmos.params.v1beta1.ParameterChangeProposal" {
-                let t: cosmos_sdk_proto::cosmos::params::v1beta1::ParameterChangeProposal = cosmrs::tx::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else if p.type_url == "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal" {
-                let t: cosmos_sdk_proto::cosmos::upgrade::v1beta1::SoftwareUpgradeProposal = cosmrs::tx::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else if p.type_url == "/ibc.core.client.v1.ClientUpdateProposal" {
-                let t: cosmos_sdk_proto::ibc::core::client::v1::ClientUpdateProposal = cosmrs::tx::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else if p.type_url == "/osmosis.poolincentives.v1beta1.UpdatePoolIncentivesProposal" {
-                let t: osmosis_proto::osmosis::poolincentives::v1beta1::UpdatePoolIncentivesProposal = osmosis_proto::custom_cosmrs::MsgProto::from_any(p).unwrap();
-                //println!("{:?}", t);
-            }else{
-                //println!("{:?}", p);
-            }
-        }
         Ok(())
     }
 
 
     #[tokio::test]
     pub async fn cw20_balance_via_smart_contract_state() -> anyhow::Result<()> {
-        let channel = super::get_terra_channel().await?;
+        let channel = super::terra().await?;
         let query_msg = cw20::Cw20QueryMsg::Balance {
             address: "terra1vcpt3p9p6rrqaw4zwt706p8vj7uhd0sf4p5snl".to_string()
         };
@@ -128,7 +103,7 @@ mod test {
 
     #[tokio::test]
     pub async fn query_account() -> anyhow::Result<()> {
-        let channel = super::get_terra_channel().await?;
+        let channel = super::terra().await?;
         let account = super::query_account(channel,"terra1dp0taj85ruc299rkdvzp4z5pfg6z6swaed74e6".to_string()).await?;
         /*println!("TEST: {}", "query_account(address)");
         println!("{:?}", &account);*/
@@ -137,7 +112,7 @@ mod test {
 
     #[tokio::test]
     pub async fn contract_info() -> anyhow::Result<()> {
-        let channel = super::get_terra_channel().await?;
+        let channel = super::terra().await?;
         let res = super::get_contract_info(channel,"terra1ccxwgew8aup6fysd7eafjzjz6hw89n40h273sgu3pl4lxrajnk5st2hvfh".to_string()).await?;
         /*println!("TEST: {}", "get_contract_info(address)");
         println!("{:?}", &res);*/

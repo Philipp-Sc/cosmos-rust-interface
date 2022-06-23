@@ -1,12 +1,9 @@
 pub mod terra_contracts;
-pub mod endpoints;
-
-
-pub mod endpoint;
+pub mod endpoints; 
 
 use serde::Deserialize;
 use serde::Serialize;
- 
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GasPrices {
@@ -29,5 +26,5 @@ pub struct GasPrices {
     pub udkk: String,
     pub uidr: String,
     pub uphp: String,
-    pub uhkd: String, 
+    pub uhkd: String,
 }

@@ -3,9 +3,10 @@
  * 
  */
 
-pub mod cosmos_rpc;
-pub mod osmosis_rpc;
-pub mod data;
+pub mod core;
+pub mod custom;
+
+pub mod data; // deprecated
 
 use data::endpoints::{get_terra_fcd, get_terra_lcd, get_terra_chain};
 use data::{GasPrices};
@@ -22,7 +23,9 @@ use secp256k1::Secp256k1;
 use anyhow::anyhow;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
-use core::str::FromStr;
+
+use std::str::FromStr;
+
 
 pub fn get_from_account(mnemonics: &str) -> anyhow::Result<String> {
     let secp = Secp256k1::new();

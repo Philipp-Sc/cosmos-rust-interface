@@ -27,6 +27,7 @@ use mirror_protocol::oracle::PriceResponse;
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumAsInner)]
 pub enum ResponseResult {
+    Json(serde_json::Value),
     Text(String),
     State(StateResponse),
     EpochState(EpochStateResponse),

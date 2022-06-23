@@ -46,10 +46,12 @@ use std::str::FromStr;
 use eyre::anyhow;
 
 pub mod query;
+pub mod channels;
+
+use channels::{terra,osmosis};
 
 use query::*;
 
-use super::data::endpoint::*;
 
 /*
 /// Chain ID to use for tests
@@ -149,7 +151,7 @@ pub fn sign_doc(tx_body: cosmrs::tx::Body, auth_info: &AuthInfo, base_account: &
 }
 
 pub async fn simulate_tx(tx_bytes: Vec<u8>) -> anyhow::Result<()> {
-    let channel = get_terra_channel().await?;
+    let channel = terra().await?;
     let res = ServiceClient::new(channel).simulate(SimulateRequest {
         tx: None, // deprecated
         tx_bytes: tx_bytes, //prost::Message::encode_to_vec(&transaction),
@@ -200,7 +202,7 @@ pub async fn pipes() -> anyhow::Result<()> {
 */
 
 pub async fn msg_send() -> anyhow::Result<()> {
-    let channel = get_terra_channel().await?;
+    let channel = terra().await?;
 
     /*
     let auth_info =
@@ -311,7 +313,7 @@ pub async fn commit_tx<T: Msg>(
 /* // Example for MsgExecuteContract
 pub async fn msg_send() -> anyhow::Result<()> {
 
-    let channel = get_terra_channel().await?;
+    let channel = terra().await?;
 
     let contract_addr_mm_market = "terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal".to_string();
 
@@ -392,7 +394,7 @@ mod test {
     #[tokio::test]
     pub async fn key_from_account() -> anyhow::Result<()> {
 
-        let channel = super::get_terra_channel().await?;
+        let channel = super::terra().await?;
         let account = super::query_account(channel,"terra16f874e52x5704ecrxyg5m9ljfv20cn0hajpng7".to_string()).await?;
         /*println!("TEST: {}", "query_account(address)");
         println!("{:?}", &account);*/

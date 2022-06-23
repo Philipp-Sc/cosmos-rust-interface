@@ -17,9 +17,8 @@ use cosmos_sdk_proto::cosmos::vesting::v1beta1::{PeriodicVestingAccount};
 use serde_json;
 use std::str;
 
-use super::super::data::endpoint::*;
-
 use tonic::transport::Channel;
+use crate::services::blockchain::smart_contracts::objects::meta::api::core::cosmos::channels::{terra, osmosis};
 
 // Swap a maximum amount of tokens for an exact amount of another token, similar to swapping a token on the trade screen GUI.
 pub async fn get_estimate_swap_exact_amount_out(channel: Channel, sender: &str, pool_id: u64, token_out: &str, routes: Vec<SwapAmountOutRoute>) -> anyhow::Result<QuerySwapExactAmountOutResponse> {
@@ -79,7 +78,7 @@ mod test {
 
     #[tokio::test]
     pub async fn get_estimate_swap_exact_amount_out() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let res = super::get_estimate_swap_exact_amount_out(channel,"osmo10885ryvnfvu7hjt8lqvge77uderycqcu50nmmh",497,"1000000uosmo",vec![osmosis_proto::osmosis::gamm::v1beta1::SwapAmountOutRoute{ pool_id: 497, token_in_denom: "ibc/46B44899322F3CD854D2D46DEEF881958467CDD4B3B10086DA49296BBED94BED".to_string() }]).await?;
         //println!("{:?}", res);
         Ok(())
@@ -87,7 +86,7 @@ mod test {
 
     #[tokio::test]
     pub async fn get_estimate_swap_exact_amount_in() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let res = super::get_estimate_swap_exact_amount_in(channel,"osmo10885ryvnfvu7hjt8lqvge77uderycqcu50nmmh",497,"2704031ibc/46B44899322F3CD854D2D46DEEF881958467CDD4B3B10086DA49296BBED94BED",vec![osmosis_proto::osmosis::gamm::v1beta1::SwapAmountInRoute{ pool_id: 497, token_out_denom: "uosmo".to_string() }]).await?;
         //println!("{:?}", res);
         Ok(())
@@ -95,14 +94,14 @@ mod test {
 
     #[tokio::test]
     pub async fn get_pool_count() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let pool_count = super::get_pool_count(channel).await?;
         Ok(())
     }
 
     #[tokio::test]
     pub async fn get_pools_info() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let pools = super::get_pools_info(channel,Some(cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest {
             key: vec![],
             offset: 0,
@@ -115,7 +114,7 @@ mod test {
 
     #[tokio::test]
     pub async fn get_pool_info() -> anyhow::Result<()> {
-        let channel = super::get_osmosis_channel().await?;
+        let channel = super::osmosis().await?;
         let pool_count = super::get_pool_info(channel,1).await?;
         Ok(())
     }
