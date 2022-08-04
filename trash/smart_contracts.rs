@@ -1,3 +1,4 @@
+/*
 // https://lcd.terra.dev/swagger/#/
 /*
  * Queries that get information directly from smart contracts.
