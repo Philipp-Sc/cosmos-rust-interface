@@ -1,3 +1,5 @@
+use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
+use cosmos_rust_package::api::core::cosmos::public_key_from_seed_phrase;
 use serde::Deserialize;
 use serde::Serialize;
 use enum_as_inner::EnumAsInner;
@@ -10,6 +12,32 @@ pub mod cosmos;
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum BlockchainQuery {
     GovProposals(Vec<ProposalExt>),
-    Json(serde_json::Value),
-    Text(String),
+}
+
+
+
+pub fn account_from_seed_phrase(seed_phrase: String, blockchain: SupportedBlockchain) -> anyhow::Result<String> {
+    let pub_key = public_key_from_seed_phrase(seed_phrase)?;
+    let account = pub_key.account(&blockchain.to_string())?;
+    Ok(account)
+}
+
+#[cfg(test)]
+mod test {
+
+    // cargo test -- --nocapture
+
+    use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
+
+    #[tokio::test]
+    pub async fn account_from_seed_phrase() -> anyhow::Result<()> {
+        let blockchain = SupportedBlockchain::Terra;
+        let res = super::account_from_seed_phrase("notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius".to_string(),blockchain.clone())?;
+        println!("{}",&res);
+        match (res.as_ref(),blockchain) {
+            ("terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v",SupportedBlockchain::Terra) => Ok(()),
+            ("osmo1x46rqay4d3cssq8gxxvqz8xt6nwlz4tdyslpn7",SupportedBlockchain::Osmosis) => Ok(()),
+            _ => Err(anyhow::anyhow!("")),
+        }
+    }
 }

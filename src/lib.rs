@@ -2,6 +2,8 @@ pub mod blockchain;
 pub mod services;
 pub mod smart_contracts;
 
+pub mod utils;
+
 use blockchain::BlockchainQuery;
 use services::ServicesQuery;
 use smart_contracts::SmartContractsQuery;
@@ -13,7 +15,8 @@ pub enum ResponseResult {
     Blockchain(BlockchainQuery),
     Services(ServicesQuery),
     SmartContracts(SmartContractsQuery),
-    Text(String),
+    LogEntry(String),  // used for logging
+    Text(String),  // used for logs
 }
 
 
@@ -22,11 +25,13 @@ mod test {
 
     // cargo test -- --nocapture
 
+    use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
+    use cosmos_rust_package::api::custom::query::gov::ProposalStatus;
+
     #[tokio::test]
-    pub async fn governance() -> anyhow::Result<()> {
-        let res = super::blockchain::cosmos::gov::governance().await?;
-        let response_result = super::ResponseResult::Blockchain(res);
-        println!("{:#?}",response_result.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].content());
+    pub async fn get_proposals() -> anyhow::Result<()> {
+        let res = super::blockchain::cosmos::gov::get_proposals(SupportedBlockchain::Terra, ProposalStatus::StatusPassed).await?;
+        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].content());
         Ok(())
     }
 }
