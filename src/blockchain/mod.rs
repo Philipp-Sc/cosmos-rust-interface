@@ -1,7 +1,5 @@
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use cosmos_rust_package::api::core::cosmos::public_key_from_seed_phrase;
-use serde::Deserialize;
-use serde::Serialize;
 use enum_as_inner::EnumAsInner;
 use cosmos_rust_package::api::custom::query::gov::ProposalExt;
 

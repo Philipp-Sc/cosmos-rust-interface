@@ -1,4 +1,3 @@
-use cosmos_rust_package::api::core::cosmos;
 use cosmos_rust_package::api::custom::query::gov::{get_proposals as get_gov_proposals, ProposalStatus};
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use crate::blockchain::BlockchainQuery;
