@@ -16,7 +16,7 @@ pub enum BlockchainQuery {
 
 pub fn account_from_seed_phrase(seed_phrase: String, blockchain: SupportedBlockchain) -> anyhow::Result<String> {
     let pub_key = public_key_from_seed_phrase(seed_phrase)?;
-    let account = pub_key.account(&blockchain.to_string())?;
+    let account = pub_key.account(&blockchain.get_prefix())?;
     Ok(account)
 }
 

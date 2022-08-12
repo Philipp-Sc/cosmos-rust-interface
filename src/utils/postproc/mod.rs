@@ -34,6 +34,7 @@ impl<T: Clone> Clone for Maybe<T> {
 pub enum EntryValue {
     Text(String),
     Json(String),
+    Value(serde_json::Value)
 }
 
 // type used by the post processing to describe a data point that can be passed on to the visualisation component

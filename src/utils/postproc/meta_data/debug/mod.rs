@@ -11,10 +11,10 @@ pub fn debug(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
                 view.push(Entry {
                     timestamp: timestamp.to_owned(),
                     key: key.to_owned(),
-                    value: EntryValue::Json(serde_json::json!({
+                    value: EntryValue::Value(serde_json::json!({
                         "data": format!("{:?}",resolved),
                         "group":Some("[DEBUG]".to_string())
-                    }).to_string())
+                    }))
                 });
             }
             Maybe { data: Err(_), .. } => {}

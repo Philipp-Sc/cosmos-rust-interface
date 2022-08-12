@@ -19,10 +19,10 @@ pub fn errors(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
                 view.push(Entry {
                     timestamp: timestamp.to_owned(),
                     key: key.to_owned(),
-                    value: EntryValue::Json(serde_json::json!({
+                    value: EntryValue::Value(serde_json::json!({
                         "data": err.to_string(),
                         "group": group
-                    }).to_string())
+                    }))
                 });
             }
         }
