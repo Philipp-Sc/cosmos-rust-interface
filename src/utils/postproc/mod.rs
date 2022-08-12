@@ -8,11 +8,11 @@
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
-use std::hash::{Hash};
+use std::hash::{Hash, Hasher};
 
 
 pub mod meta_data;
-
+pub mod blockchain;
 
 // type used by cosmos-rust-bot describe the state of a task
 #[derive(Debug)]
@@ -30,16 +30,36 @@ impl<T: Clone> Clone for Maybe<T> {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum EntryValue {
+    Text(String),
+    Json(String),
+}
+
 // type used by the post processing to describe a data point that can be passed on to the visualisation component
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Entry {
     pub timestamp: i64,
     pub key: String,
-    pub prefix: Option<String>,
-    pub value: String,
-    pub suffix: Option<String>,
-    pub index: Option<i32>,
-    pub group: Option<String>,
+    pub value: EntryValue
+}
+
+impl Hash for Entry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.timestamp.hash(state);
+        self.key.hash(state);
+        format!("{:?}",self.value).hash(state);
+    }
+}
+
+impl Entry {
+    pub fn new(timestamp: i64, key: &str, value: EntryValue) -> Entry {
+        Entry {
+            timestamp,
+            key: key.to_string(),
+            value,
+        }
+    }
 }
 
 // helper function to load a Entries from disk
@@ -60,7 +80,7 @@ pub async fn load_state(path: &str) -> Option<Vec<Option<Entry>>> {
         }
     }
     if let Some(mut s) = state {
-        s.sort_by(|a, b| a.as_ref().unwrap().index.unwrap_or(0i32).cmp(&b.as_ref().unwrap().index.unwrap_or(0i32)));
+        //s.sort_by(|a, b| a.as_ref().unwrap().index.unwrap_or(0i32).cmp(&b.as_ref().unwrap().index.unwrap_or(0i32)));
         return Some(s);
     }
     state

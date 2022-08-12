@@ -31,6 +31,8 @@ mod test {
     #[tokio::test]
     pub async fn get_proposals() -> anyhow::Result<()> {
         let res = super::blockchain::cosmos::gov::get_proposals(SupportedBlockchain::Terra, ProposalStatus::StatusPassed).await?;
+        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].blockchain);
+        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].status);
         println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].content());
         Ok(())
     }

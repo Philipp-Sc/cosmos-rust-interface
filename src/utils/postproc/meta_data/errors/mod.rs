@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::ResponseResult;
-use crate::utils::postproc::{Maybe, Entry};
+use crate::utils::postproc::{Maybe, Entry, EntryValue};
 
 
 pub fn errors(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
@@ -19,11 +19,10 @@ pub fn errors(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
                 view.push(Entry {
                     timestamp: timestamp.to_owned(),
                     key: key.to_owned(),
-                    prefix: None,
-                    value: err.to_string(),
-                    suffix: None,
-                    index: None,
-                    group,
+                    value: EntryValue::Json(serde_json::json!({
+                        "data": err.to_string(),
+                        "group": group
+                    }).to_string())
                 });
             }
         }

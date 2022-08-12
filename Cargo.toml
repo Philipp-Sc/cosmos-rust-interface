@@ -30,6 +30,8 @@ thiserror = { version = "1.0.21" }
 eyre = "0.6"
 rust_decimal = "1.12.2"
 chrono = "0.4"
+strum = "0.24"
+strum_macros = "0.24"
 
 
 [profile.release]
