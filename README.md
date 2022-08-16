@@ -2,7 +2,7 @@
 
 - Interface with cosmos chains, used by [cosmos-rust-bot](https://github.com/Philipp-Sc/cosmos-rust-bot).
 
-## developer notes
+## Developer notes
 
 - wraps return type within common structure / ResponseResult. 
  `Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(res)))`
