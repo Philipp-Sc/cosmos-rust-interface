@@ -4,16 +4,4 @@
 
 ## Dependencies
 
-- https://github.com/Philipp-Sc/cosmos-rust-package
-
-## Similar Projects
-
-- https://github.com/PeggyJV/ocular
-- https://github.com/CyberHoward/cosm-rust-script/
-
-## Q&A
-
-- What is the difference to `cosmos-rust-package`?
-
-`cosmos-rust-interface` can be used for complex blockchain queries and transactions.
-`cosmos-rust-package` is the base layer and has no knowledge about specific dapps.
+- <a href="https://github.com/Philipp-Sc/cosmos-rust-package">Philipp-Sc/cosmos-rust-package</a>
