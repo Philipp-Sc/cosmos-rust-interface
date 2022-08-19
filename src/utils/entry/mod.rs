@@ -1,20 +1,16 @@
-/*
- * Helper functions to generate Entries through the combination/processing of ResponseResults.
- * Entries are ready to be formatted and then displayed to the user.
- *
- * In: HashMap<String,  Maybe<ResponseResult>>>, serde_json::Value
- * Out: Vec<Entry>
- */
+
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
 use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "postproc")]
+pub mod postproc;
 
-pub mod meta_data;
-pub mod blockchain;
+#[cfg(feature = "db")]
+pub mod db;
 
-// type used by cosmos-rust-bot describe the state of a task
+
 #[derive(Debug)]
 pub struct Maybe<T> {
     pub data: anyhow::Result<T>,
@@ -61,28 +57,4 @@ impl Entry {
             value,
         }
     }
-}
-
-// helper function to load a Entries from disk
-pub async fn load_state(path: &str) -> Option<Vec<Option<Entry>>> {
-    let mut state: Option<Vec<Option<Entry>>> = None;
-    let mut try_counter = 0;
-    while state.is_none() && try_counter < 3 {
-        match fs::read_to_string(path) {
-            Ok(file) => {
-                match serde_json::from_str(&file) {
-                    Ok(res) => { state = Some(res); }
-                    Err(_) => { try_counter = try_counter + 1; }
-                };
-            }
-            Err(_) => {
-                try_counter = try_counter + 1;
-            }
-        }
-    }
-    if let Some(mut s) = state {
-        //s.sort_by(|a, b| a.as_ref().unwrap().index.unwrap_or(0i32).cmp(&b.as_ref().unwrap().index.unwrap_or(0i32)));
-        return Some(s);
-    }
-    state
 }

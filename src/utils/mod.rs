@@ -1,5 +1,8 @@
 
-pub mod postproc;
+pub mod entry;
+
+#[cfg(any(feature = "interface", feature = "postproc"))]
+pub mod response;
 
 // contains functions
 use serde_json::Value;

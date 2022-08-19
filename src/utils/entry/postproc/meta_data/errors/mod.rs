@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use crate::ResponseResult;
-use crate::utils::postproc::{Maybe, Entry, EntryValue};
+use crate::utils::response::{ResponseResult};
+use crate::utils::entry::{Maybe, Entry, EntryValue};
 
 
 pub fn errors(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {

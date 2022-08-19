@@ -7,11 +7,6 @@ use cosmos_rust_package::api::custom::query::gov::ProposalExt;
 // query blocks, block height, meta information, past transactions
 pub mod cosmos;
 
-#[derive(Debug, Clone, EnumAsInner)]
-pub enum BlockchainQuery {
-    GovProposals(Vec<ProposalExt>),
-}
-
 
 
 pub fn account_from_seed_phrase(seed_phrase: String, blockchain: SupportedBlockchain) -> anyhow::Result<String> {

@@ -1,23 +1,12 @@
+
+#[cfg(feature = "interface")]
 pub mod blockchain;
+#[cfg(feature = "interface")]
 pub mod services;
+#[cfg(feature = "interface")]
 pub mod smart_contracts;
 
 pub mod utils;
-
-use blockchain::BlockchainQuery;
-use services::ServicesQuery;
-use smart_contracts::SmartContractsQuery;
-use enum_as_inner::EnumAsInner;
-
-
-#[derive(Debug, Clone, EnumAsInner)]
-pub enum ResponseResult {
-    Blockchain(BlockchainQuery),
-    Services(ServicesQuery),
-    SmartContracts(SmartContractsQuery),
-    LogEntry(String),  // used for logging
-    Text(String),  // used for logs
-}
 
 
 #[cfg(test)]

@@ -4,11 +4,10 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
-use crate::{BlockchainQuery, ResponseResult};
-use crate::utils::postproc::{Maybe, Entry, EntryValue};
+use crate::utils::entry::{Maybe, Entry, EntryValue};
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
-
+use crate::utils::response::{ResponseResult,BlockchainQuery};
 
 
 pub fn governance_proposal_notifications(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
