@@ -2,18 +2,13 @@
 
 - Interface with cosmos chains, used by [cosmos-rust-bot](https://github.com/Philipp-Sc/cosmos-rust-bot).
 
+## Developer notes
+
+- wraps return type within common structure / ResponseResult. 
+ `Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(res)))`
+ 
+- provides post-processing given a set of ResponseResults, returning a list of entries.
+
 ## Dependencies
 
-- https://github.com/Philipp-Sc/cosmos-rust-package
-
-## Similar Projects
-
-- https://github.com/PeggyJV/ocular
-- https://github.com/CyberHoward/cosm-rust-script/
-
-## Q&A
-
-- What is the difference to `cosmos-rust-package`?
-
-`cosmos-rust-interface` can be used for complex blockchain queries and transactions.
-`cosmos-rust-package` is the base layer and has no knowledge about specific dapps.
+- <a href="https://github.com/Philipp-Sc/cosmos-rust-package">Philipp-Sc/cosmos-rust-package</a>
