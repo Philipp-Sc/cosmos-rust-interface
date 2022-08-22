@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
-use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::query::gov::{ProposalExt};
 use crate::utils::entry::{Maybe, Entry, EntryValue};
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
@@ -18,8 +18,9 @@ pub fn governance_proposal_notifications(maybes: &HashMap<String, Maybe<Response
     view.sort_by(|a, b| {
         match (a,b) {
             (Entry{value: EntryValue::Value(x), ..},Entry{ value: EntryValue::Value(y),..}) => {
-                let xx = x.get("ranks").unwrap().as_array().unwrap().into_iter().filter(|c| c["order_by_LatestTime"]!=serde_json::Value::Null).map(|c| c["order_by_LatestTime"].as_u64().unwrap()).collect::<Vec<u64>>()[0];
-                let yy = y.get("ranks").unwrap().as_array().unwrap().into_iter().filter(|c| c["order_by_LatestTime"]!=serde_json::Value::Null).map(|c| c["order_by_LatestTime"].as_u64().unwrap()).collect::<Vec<u64>>()[0];
+                let v = serde_json::json!({});
+                let xx = x.get("order_by").unwrap_or(&v).as_object().unwrap()["LatestTime"].as_u64().unwrap_or(0);
+                let yy = y.get("order_by").unwrap_or(&v).as_object().unwrap()["LatestTime"].as_u64().unwrap_or(0);
                 xx.cmp(&yy)
             },
             _ => {
@@ -49,21 +50,31 @@ fn list_latest_by(view: &mut HashMap<u64,Entry>, maybes: &HashMap<String, Maybe<
         if let Some(ref t) = time {
             proposals.sort_by(|a, b| a.0.time(t.clone()).as_ref().unwrap().seconds.cmp(&b.0.time(t.clone()).as_ref().unwrap().seconds));
         }
-        for (i,(proposal,key,timestamp)) in proposals.iter().enumerate() {
+        for (i,(proposal,origin,timestamp)) in proposals.iter().enumerate() {
             let mut hasher = DefaultHasher::new();
             proposal.hash(&mut hasher);
             let hash = hasher.finish();
-            let rank = serde_json::json!({format!("order_by_{}", time.as_ref().map(|x| x.to_string()).unwrap_or("None".to_string())).to_string(): i});
+            let key = format!("{}", time.as_ref().map(|x| x.to_string()).unwrap_or("None".to_string())).to_string();
+            let value = i;
+            let rank = serde_json::json!({key.to_owned(): value.to_owned()});
+
             if !view.contains_key(&hash) {
+                let filter  = serde_json::json!({
+                    "id": proposal.proposal.proposal_id,
+                    "blockchain": proposal.blockchain_name.to_string(),
+                    "status": proposal.status.to_string(),
+                    "type": proposal.content.to_string()
+                });
+
                 view.insert(hash,Entry {
                     timestamp: timestamp.to_owned(),
-                    key: key.to_owned(),
-                    value: EntryValue::Value(serde_json::json!({"info": /*format!("{:?}",proposal)*/ proposal.custom_display(),"id":proposal.proposal.proposal_id,"ranks": vec![rank]}))
+                    origin: origin.to_owned(),
+                    value: EntryValue::Value(serde_json::json!({"info": /*format!("{:?}",proposal)*/ proposal.custom_display(),"where": filter,"order_by": rank}))
                 });
             }else{
                 let item = view.get_mut(&hash).unwrap();
                 if let EntryValue::Value(ref mut val) = item.value {
-                    val.get_mut("ranks").unwrap().as_array_mut().unwrap().push(rank);
+                    val.get_mut("order_by").unwrap().as_object_mut().unwrap().insert(key,serde_json::json!(value));
                 }
             }
         }

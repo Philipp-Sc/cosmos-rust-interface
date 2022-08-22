@@ -37,14 +37,14 @@ pub enum EntryValue {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Entry {
     pub timestamp: i64,
-    pub key: String,
+    pub origin: String,
     pub value: EntryValue
 }
 
 impl Hash for Entry {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.timestamp.hash(state);
-        self.key.hash(state);
+        self.origin.hash(state);
         format!("{:?}",self.value).hash(state);
     }
 }
@@ -53,7 +53,7 @@ impl Entry {
     pub fn new(timestamp: i64, key: &str, value: EntryValue) -> Entry {
         Entry {
             timestamp,
-            key: key.to_string(),
+            origin: key.to_string(),
             value,
         }
     }

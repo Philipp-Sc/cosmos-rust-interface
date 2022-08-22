@@ -11,7 +11,7 @@ pub mod cosmos;
 
 pub fn account_from_seed_phrase(seed_phrase: String, blockchain: SupportedBlockchain) -> anyhow::Result<String> {
     let pub_key = public_key_from_seed_phrase(seed_phrase)?;
-    let account = pub_key.account(&blockchain.get_prefix())?;
+    let account = pub_key.account(&blockchain.prefix)?;
     Ok(account)
 }
 
@@ -20,16 +20,16 @@ mod test {
 
     // cargo test -- --nocapture
 
-    use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
+    use cosmos_rust_package::api::core::cosmos::channels;
 
     #[tokio::test]
     pub async fn account_from_seed_phrase() -> anyhow::Result<()> {
-        let blockchain = SupportedBlockchain::Terra;
+        let blockchain = channels::get_supported_blockchains().get("terra").unwrap();
         let res = super::account_from_seed_phrase("notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius".to_string(),blockchain.clone())?;
         println!("{}",&res);
         match (res.as_ref(),blockchain) {
-            ("terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v",SupportedBlockchain::Terra) => Ok(()),
-            ("osmo1x46rqay4d3cssq8gxxvqz8xt6nwlz4tdyslpn7",SupportedBlockchain::Osmosis) => Ok(()),
+            ("terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v", channels::SupportedBlockchain{ name: &"Terra", .. }) => Ok(()),
+            ("osmo1x46rqay4d3cssq8gxxvqz8xt6nwlz4tdyslpn7", channels::SupportedBlockchain{ name: &"Osmosis", .. }) => Ok(()),
             _ => Err(anyhow::anyhow!("")),
         }
     }

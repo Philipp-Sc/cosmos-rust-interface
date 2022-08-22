@@ -13,7 +13,7 @@ pub fn logs(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
                     ResponseResult::LogEntry(text) => {
                         view.push(Entry {
                             timestamp: timestamp.to_owned(),
-                            key: key.to_owned(),
+                            origin: key.to_owned(),
                             value: EntryValue::Value(serde_json::json!({
                                      "data": text.to_owned(),
                                      "group": Some("[Logs]".to_string())

@@ -1,6 +1,6 @@
 // save / load / format & display Entries
 // only cosmos-rust-interface should know about Entries! and possibly cosmos-rust-bot
-
+pub mod query;
 
 use std::fs;
 use crate::utils::entry::Entry;
