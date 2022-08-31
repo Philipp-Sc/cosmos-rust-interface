@@ -20,16 +20,17 @@ mod test {
 
     // cargo test -- --nocapture
 
+    use anyhow::anyhow;
     use cosmos_rust_package::api::core::cosmos::channels;
 
     #[tokio::test]
     pub async fn account_from_seed_phrase() -> anyhow::Result<()> {
-        let blockchain = channels::get_supported_blockchains().get("terra").unwrap();
+        let blockchain = channels::get_supported_blockchains().get("terra").unwrap().clone();
         let res = super::account_from_seed_phrase("notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius".to_string(),blockchain.clone())?;
         println!("{}",&res);
         match (res.as_ref(),blockchain) {
-            ("terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v", channels::SupportedBlockchain{ name: &"Terra", .. }) => Ok(()),
-            ("osmo1x46rqay4d3cssq8gxxvqz8xt6nwlz4tdyslpn7", channels::SupportedBlockchain{ name: &"Osmosis", .. }) => Ok(()),
+            ("terra1x46rqay4d3cssq8gxxvqz8xt6nwlz4td20k38v", channels::SupportedBlockchain{ name , .. }) => if name=="Terra"{ Ok(())}else{Err(anyhow::anyhow!("Error"))},
+            ("osmo1x46rqay4d3cssq8gxxvqz8xt6nwlz4tdyslpn7", channels::SupportedBlockchain{ name, .. }) =>  if name=="Osmosis"{ Ok(())}else{Err(anyhow::anyhow!("Error"))},
             _ => Err(anyhow::anyhow!("")),
         }
     }

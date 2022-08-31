@@ -11,12 +11,17 @@ pub fn logs(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
             Maybe { data: Ok(resolved), timestamp } => {
                 match resolved {
                     ResponseResult::LogEntry(text) => {
+                        let filter = serde_json::json!({
+                            "key": key.to_owned(),
+                            "value": text.to_owned(),
+                            "group": "logs"
+                        });
                         view.push(Entry {
                             timestamp: timestamp.to_owned(),
-                            origin: key.to_owned(),
+                            origin: "meta_data_logs".to_string(),
                             value: EntryValue::Value(serde_json::json!({
-                                     "data": text.to_owned(),
-                                     "group": Some("[Logs]".to_string())
+                                "info": format!("{}: {}", key,text),
+                                "where": filter,
                             }))
                         });
                     }

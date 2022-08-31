@@ -7,7 +7,7 @@ pub fn query_entries(entries: &Vec<Entry>, filter: HashMap<String, String>, orde
             if val.get("where").is_some(){
                 if let Some(filter_options) = val.get("where").unwrap().as_object() {
                     let res: bool = filter.iter().map(|(k,v)| {
-                        filter_options.contains_key(k) && (filter_options.get(k).unwrap() == &serde_json::json!(v) || v == "any")
+                        filter_options.contains_key(k.as_str()) && (filter_options.get(k.as_str()).unwrap() == &serde_json::json!(v) || v == "any")
                     }).fold(true,|x, y| {x && y});
                     return  res;
                 }

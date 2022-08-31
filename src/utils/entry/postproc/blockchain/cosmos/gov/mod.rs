@@ -56,11 +56,11 @@ fn list_latest_by(view: &mut HashMap<u64,Entry>, maybes: &HashMap<String, Maybe<
             let hash = hasher.finish();
             let key = format!("{}", time.as_ref().map(|x| x.to_string()).unwrap_or("None".to_string())).to_string();
             let value = i;
-            let rank = serde_json::json!({key.to_owned(): value.to_owned()});
+            let rank = serde_json::json!({"id": proposal.proposal.proposal_id, key.to_owned(): value.to_owned()});
 
             if !view.contains_key(&hash) {
                 let filter  = serde_json::json!({
-                    "id": proposal.proposal.proposal_id,
+                    "id": proposal.proposal.proposal_id.to_string(),
                     "blockchain": proposal.blockchain_name.to_string(),
                     "status": proposal.status.to_string(),
                     "type": proposal.content.to_string()

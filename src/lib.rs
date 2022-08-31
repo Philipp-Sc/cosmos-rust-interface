@@ -14,15 +14,16 @@ mod test {
 
     // cargo test -- --nocapture
 
+    use cosmos_rust_package::api::core::cosmos::channels;
     use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
     use cosmos_rust_package::api::custom::query::gov::ProposalStatus;
 
     #[tokio::test]
     pub async fn get_proposals() -> anyhow::Result<()> {
-        let res = super::blockchain::cosmos::gov::get_proposals(SupportedBlockchain::Terra, ProposalStatus::StatusPassed).await?;
-        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].blockchain);
+        let res = super::blockchain::cosmos::gov::get_proposals(channels::get_supported_blockchains().get("terra").unwrap().clone(), ProposalStatus::StatusPassed).await?;
+        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].blockchain_name);
         println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].status);
-        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].content());
+        println!("{:#?}",res.as_blockchain().unwrap().as_gov_proposals().unwrap()[0].content);
         Ok(())
     }
 }
