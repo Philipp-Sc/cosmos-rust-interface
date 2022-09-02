@@ -1,3 +1,4 @@
+extern crate core;
 
 #[cfg(feature = "interface")]
 pub mod blockchain;

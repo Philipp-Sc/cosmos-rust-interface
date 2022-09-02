@@ -1,24 +1,23 @@
 use std::collections::HashMap;
 use crate::utils::response::{ResponseResult};
-use crate::utils::entry::{Maybe, Entry, EntryValue};
+use crate::utils::entry::*;
 
-pub fn debug(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<Entry> {
-    let mut view: Vec<Entry> = Vec::new();
+pub fn debug(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<CosmosRustBotValue> {
+    let mut view: Vec<CosmosRustBotValue> = Vec::new();
 
     for (key,value) in maybes {
         match value {
             Maybe { data: Ok(resolved), timestamp } => {
-                view.push(Entry {
+                view.push(CosmosRustBotValue::Entry(Entry::Debug(Debug {
                     timestamp: timestamp.to_owned(),
-                    origin: key.to_owned(),
-                    value: EntryValue::Value(serde_json::json!({
-                        "data": format!("{:?}",resolved),
-                        "group":Some("[DEBUG]".to_string())
-                    }))
-                });
+                    origin: "meta_data_debug".to_string(),
+                    key: format!("{}",key),
+                    value: format!("{:?}",resolved),
+                })));
             }
             Maybe { data: Err(_), .. } => {}
         }
     }
+    CosmosRustBotValue::add_membership(&mut view,None,"meta_data_debug");
     view
 }
