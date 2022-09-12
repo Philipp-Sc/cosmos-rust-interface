@@ -1,39 +1,62 @@
-use std::collections::HashMap;
 use crate::utils::entry::*;
 
+pub mod socket;
+// if query contains "subscribe/unsubscribe"
+// then insert or delete entry
+// done.
+
+// create task on cosmos-rust-bot side, that listens to changes and passes them on.
 pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustBotValue> {
     // serde_json::json!({"indices":vec!["task_meta_data"],"filter": filter, "order_by": order_by, "limit":limit})
-    let empty: Vec<serde_json::Value> = Vec::new();
-    let indices = query.get("indices").map(|x| x.as_array().unwrap_or(&empty)).unwrap_or(&empty).iter().map(|x| x.as_str().unwrap_or("")).collect::<Vec<&str>>();
 
-    let filter_k_v_pair: Vec<(String,String)> = match query.get("filter") {
-        Some(filter) => {
-            match filter.as_object() {
-                Some(obj) => {
-                    obj.iter().filter(|(_, v)| v.as_str().is_some()).map(|(k,v)| (k.to_string(),v.as_str().unwrap().to_string())).collect()
-                    },
-                None => { Vec::new() }
-            }
+    let empty: Vec<serde_json::Value> = Vec::new();
+    let indices = query
+        .get("indices")
+        .map(|x| x.as_array().unwrap_or(&empty))
+        .unwrap_or(&empty)
+        .iter()
+        .map(|x| x.as_str().unwrap_or(""))
+        .collect::<Vec<&str>>();
+
+    let filter_k_v_pair: Vec<(String, String)> = match query.get("filter") {
+        Some(filter) => match filter.as_object() {
+            Some(obj) => obj
+                .iter()
+                .filter(|(_, v)| v.as_str().is_some())
+                .map(|(k, v)| (k.to_string(), v.as_str().unwrap().to_string()))
+                .collect(),
+            None => Vec::new(),
         },
-        None => {Vec::new()}
+        None => Vec::new(),
     };
-    let filter: Vec<String> = filter_k_v_pair.iter().map(|(k,v)| format!("{}_{}",k,v.to_lowercase())).collect();
+    let mut filter: Vec<String> = filter_k_v_pair
+        .iter()
+        .map(|(k, v)| format!("{}_{}", k, v.to_lowercase()))
+        .collect();
 
     let order_by: Option<&str> = query.get("order_by").map(|x| x.as_str()).unwrap_or(None);
 
-    let limit: Option<usize> = query.get("limit").map(|x| x.as_u64().map(|y| y as usize)).unwrap_or(None);
-
+    let limit: Option<usize> = query
+        .get("limit")
+        .map(|x| x.as_u64().map(|y| y as usize))
+        .unwrap_or(None);
 
     let mut indices_list: Vec<Vec<Vec<u8>>> = Vec::new();
     let mut order_by_index: Option<Vec<Vec<u8>>> = None;
+    //println!("{:?}", &order_by_index.map(|x| x.len()));
     let mut r = db.scan_prefix(&Index::get_prefix()[..]);
     while let Some(Ok(item)) = r.next() {
         let val: CosmosRustBotValue = CosmosRustBotValue::from(item.1.to_vec());
         //print!("{:?}", val.try_get("name"));
         match val {
             CosmosRustBotValue::Index(index) => {
-                //println!("{:?}",index.name);
-                if indices.contains(&index.name.as_str()) || filter.contains(&index.name) { // todo: reduce workload by remembering if index for filter was used
+                //println!("{:?}", index.name);
+                let index_name_in_filter = filter.contains(&index.name);
+                if indices.contains(&index.name.as_str()) || index_name_in_filter {
+                    // remember if index for filter was used
+                    if index_name_in_filter {
+                        filter.retain(|x| x != &index.name);
+                    }
                     indices_list.push(index.list.clone());
                 }
                 if let Some(ord) = order_by {
@@ -41,11 +64,11 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
                         order_by_index = Some(index.list.clone());
                     }
                 }
-            },
+            }
             _ => {}
         }
     }
-    //println!("indices list len: {}",indices_list.len());
+    //println!("indices list len: {}", indices_list.len());
     let mut section: Vec<&Vec<u8>> = Vec::new();
     if indices_list.len() > 1 {
         for each in &indices_list[0] {
@@ -60,34 +83,155 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
                 section.push(&each);
             }
         }
-    }else if indices_list.len() == 1 {
+    } else if indices_list.len() == 1 {
         section = indices_list[0].iter().map(|x| x).collect();
     }
-    //println!("section list len: {}",section.len());
+    //println!("section list len: {}", section.len());
 
     let mut res: Vec<CosmosRustBotValue> = Vec::new();
     if let Some(ord) = order_by_index {
         for each in &ord {
             if section.contains(&each) {
-                if let Ok(Some(t)) = db.get(each).map(|x| x.map(|y| CosmosRustBotValue::from(y.to_vec()))) {
-                    // here do filter value check
+                if let Ok(Some(t)) = db
+                    .get(each)
+                    .map(|x| x.map(|y| CosmosRustBotValue::from(y.to_vec())))
+                {
                     res.push(t);
                 }
             }
         }
-    }else {
+    } else {
         for each in section {
-            if let Ok(Some(t)) = db.get(each).map(|x| x.map(|y| CosmosRustBotValue::from(y.to_vec()))) {
-                // here do filter value check
+            if let Ok(Some(t)) = db
+                .get(each)
+                .map(|x| x.map(|y| CosmosRustBotValue::from(y.to_vec())))
+            {
                 res.push(t);
             }
         }
     }
-    if let Some(l) = limit {
-        return res.into_iter().take(l).collect();
+    let mut final_res: Vec<CosmosRustBotValue> = Vec::new();
+    for entry in res {
+        //println!("{:?}", &entry);
+        if filter.len() == 0
+            || filter_k_v_pair
+                .iter()
+                .filter(|(k, v)| filter.contains(&format!("{}_{}", k, v.to_lowercase())))
+                .fold(true, |sum, (k, v)| match entry.try_get(k) {
+                    None => false,
+                    Some(val) => {
+                        //println!("EntryValue: {:?}, FilterValue: {:?}, FilterKey: {:?}",&val, v, k );
+                        if let Some(s) = val.as_str() {
+                            (v.as_str() == "any" || s == v.as_str()) && sum
+                        } else if val.is_number() {
+                            format!("{}", val).as_str() == v.as_str() && sum
+                        } else {
+                            false
+                        }
+                    }
+                })
+        {
+            final_res.push(entry);
+        }
     }
-    res
+    //println!("{:?}", &final_res);
+    if let Some(l) = limit {
+        final_res = final_res.into_iter().take(l).collect();
+    }
 
+    let subscribe = query
+        .get("subscribe")
+        .map(|x| x.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+    let update_subscription = query
+        .get("update_subscription")
+        .map(|x| x.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+    let unsubscribe = query
+        .get("unsubscribe")
+        .map(|x| x.as_bool().unwrap_or(false))
+        .unwrap_or(false);
+    if subscribe || update_subscription || unsubscribe {
+        let user_name = query
+            .get("user_name")
+            .map(|x| x.as_str().unwrap_or("default_user"))
+            .unwrap_or("default_user");
+        let mut query = query.clone();
+        query.as_object_mut().map(|x| {
+            x.retain(|k, _| {
+                !vec![
+                    "subscribe",
+                    "user_name",
+                    "update_subscription",
+                    "unsubscribe",
+                ]
+                .contains(&k.as_str())
+            })
+        });
+        let query = query.to_string();
+        let s_key = Subscription::get_key_for_query(query.as_str());
+        match db.get(&s_key) {
+            Ok(Some(s)) => {
+                let mut s = match CosmosRustBotValue::from(s.to_vec()) {
+                    CosmosRustBotValue::Subscription(t) => t,
+                    _ => {
+                        panic!();
+                    }
+                };
+                if subscribe {
+                    s.add_user(user_name.to_string());
+                }
+                let mut added_or_removed_items = false;
+                if update_subscription {
+                    let final_res_keys =
+                        final_res.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
+                    for e in &final_res_keys {
+                        if !s.list.contains(&e) {
+                            added_or_removed_items = true;
+                            s.list.push(e.clone());
+                        }
+                    }
+                    let len = s.list.len();
+                    s.list.retain(|x| final_res_keys.contains(x));
+                    if len != s.list.len() {
+                        added_or_removed_items = true;
+                    }
+                }
+                let rm = s.user_list.len() <= 1;
+                if unsubscribe {
+                    if rm {
+                        db.remove(&s_key).ok();
+                    } else {
+                        s.remove_user(user_name.to_string());
+                    }
+                }
+                if subscribe
+                    || (update_subscription && added_or_removed_items)
+                    || (!rm && unsubscribe)
+                {
+                    db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
+                        .ok();
+                }
+            }
+            Ok(None) => {
+                if !unsubscribe {
+                    let mut s = Subscription {
+                        query: query.to_owned(),
+                        user_list: HashSet::new(),
+                        list: Vec::new(),
+                    };
+                    s.add_user(user_name.to_string());
+                    for e in final_res.iter() {
+                        s.list.push(e.key());
+                    }
+                    db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
+                        .ok();
+                }
+            }
+            Err(_) => {}
+        }
+    }
+    final_res
 }
 
 /*pub fn query_entries(entries: &Vec<CosmosRustBotValue>, filter: HashMap<String, String>, order_by: String, limit: usize) -> Vec<&CosmosRustBotValue> {
