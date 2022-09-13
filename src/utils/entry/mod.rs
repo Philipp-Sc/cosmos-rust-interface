@@ -3,7 +3,6 @@ use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::fs;
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "postproc")]
@@ -289,15 +288,43 @@ impl Notification {
         self.user_list.remove(&h)
     }
 }
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Notify {
+    pub timestamp: i64,
+    pub msg: Vec<String>,
+}
+impl Notify {
+    pub fn calculate_hash(&self) -> u64 {
+        let mut s = DefaultHasher::new();
+        self.msg.hash(&mut s);
+        self.timestamp.hash(&mut s);
+        s.finish()
+    }
+    fn get_hash(&self) -> u64 {
+        Notify::calculate_hash(self)
+    }
+    pub fn get_prefix() -> Vec<u8> {
+        let mut k: Vec<u8> = Vec::new();
+        k.append(&mut b"notify".to_vec());
+        k
+    }
+    pub fn get_key(&self) -> Vec<u8> {
+        let mut k: Vec<u8> = Notify::get_prefix();
+        k.append(&mut self.get_hash().to_ne_bytes().to_vec());
+        k
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CosmosRustServerValue {
     Notification(Notification),
+    Notify(Notify),
 }
 impl CosmosRustServerValue {
     pub fn key(&self) -> Vec<u8> {
         match self {
             CosmosRustServerValue::Notification(entry) => entry.get_key(),
+            CosmosRustServerValue::Notify(entry) => entry.get_key(),
         }
     }
     pub fn value(&self) -> Vec<u8> {
@@ -406,7 +433,6 @@ impl CosmosRustBotValue {
                 "list" => Some(serde_json::json!(val.list)),
                 &_ => None,
             },
-            &_ => None,
         }
     }
     pub fn add_variants_of_memberships(view: &mut Vec<CosmosRustBotValue>, fields: Vec<&str>) {
