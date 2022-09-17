@@ -38,18 +38,17 @@ pub fn spawn_socket_query_server(tree: &sled::Db) {
 fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result<()> {
     let decoded = super::super::socket::get_decoded_from_stream(&mut unix_stream)?;
     //println!("We received this message: {:?}\nReplying...", &decoded);
-   
-    let user_name = &decoded
-        .get("user_name")
-        .map(|x| x.as_str().unwrap_or("default_user"))
-        .unwrap_or("default_user");
+
+    let user_id = &decoded
+        .get("user_id")
+        .map(|x| x.as_u64().unwrap_or(0))
+        .unwrap_or(0);
     let mut notification = Notification {
         query: decoded.to_string(),
         entries: query_sled_db(tree, decoded.clone()),
         user_list: HashSet::new(),
     };
-    notification.add_user(user_name.to_string());
-   
+    notification.add_user(*user_id);
 
     //println!("We send this response: {:?}", &field_list);
 

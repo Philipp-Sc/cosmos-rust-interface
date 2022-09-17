@@ -214,21 +214,21 @@ impl Subscription {
         k.append(&mut s.finish().to_ne_bytes().to_vec());
         k
     }
-    pub fn add_user(&mut self, user_name: String) {
+    pub fn add_user(&mut self, user_id: u64) {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.insert(h);
     }
-    pub fn contains_user(&self, user_name: String) -> bool {
+    pub fn contains_user(&self, user_id: u64) -> bool {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.contains(&h)
     }
-    pub fn remove_user(&mut self, user_name: String) -> bool {
+    pub fn remove_user(&mut self, user_id: u64) -> bool {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.remove(&h)
     }
@@ -269,21 +269,21 @@ impl Notification {
         k.append(&mut s.finish().to_ne_bytes().to_vec());
         k
     }
-    pub fn add_user(&mut self, user_name: String) {
+    pub fn add_user(&mut self, user_id: u64) {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.insert(h);
     }
-    pub fn contains_user(&self, user_name: String) -> bool {
+    pub fn contains_user(&self, user_id: u64) -> bool {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.contains(&h)
     }
-    pub fn remove_user(&mut self, user_name: String) -> bool {
+    pub fn remove_user(&mut self, user_id: u64) -> bool {
         let mut s = DefaultHasher::new();
-        user_name.as_str().hash(&mut s);
+        user_id.hash(&mut s);
         let h: u64 = s.finish();
         self.user_list.remove(&h)
     }
@@ -292,12 +292,14 @@ impl Notification {
 pub struct Notify {
     pub timestamp: i64,
     pub msg: Vec<String>,
+    pub user_hash: u64,
 }
 impl Notify {
     pub fn calculate_hash(&self) -> u64 {
         let mut s = DefaultHasher::new();
         self.msg.hash(&mut s);
         self.timestamp.hash(&mut s);
+        self.user_hash.hash(&mut s);
         s.finish()
     }
     fn get_hash(&self) -> u64 {
@@ -316,15 +318,41 @@ impl Notify {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UserMetaData {
+    pub timestamp: i64,
+    pub user_id: u64,
+    pub user_name: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub language_code: Option<String>,
+    pub user_chat_id: i64,
+}
+impl UserMetaData {
+    pub fn user_hash(user_id: u64) -> u64 {
+        let mut s = DefaultHasher::new();
+        user_id.hash(&mut s);
+        s.finish()
+    }
+    fn get_hash(&self) -> u64 {
+        UserMetaData::user_hash(self.user_id)
+    }
+    pub fn get_key(&self) -> Vec<u8> {
+        self.get_hash().to_ne_bytes().to_vec()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CosmosRustServerValue {
     Notification(Notification),
     Notify(Notify),
+    UserMetaData(UserMetaData),
 }
 impl CosmosRustServerValue {
     pub fn key(&self) -> Vec<u8> {
         match self {
             CosmosRustServerValue::Notification(entry) => entry.get_key(),
             CosmosRustServerValue::Notify(entry) => entry.get_key(),
+            CosmosRustServerValue::UserMetaData(entry) => entry.get_key(),
         }
     }
     pub fn value(&self) -> Vec<u8> {
@@ -498,7 +526,23 @@ impl CosmosRustBotValue {
             .map(|(key, x)| (key, x.unwrap()))
             .collect::<Vec<(Vec<u8>, serde_json::Value)>>();
         have_field.sort_by(|(_, first), (_, second)| match (first, second) {
-            (serde_json::Value::String(f), serde_json::Value::String(s)) => f.cmp(s),
+            (serde_json::Value::String(f), serde_json::Value::String(s)) => {
+                match (f.parse::<u64>(),s.parse::<u64>()) {
+                    (Ok(ff), Ok(ss)) => {
+                        ff.cmp(&ss)
+                    },
+                    _ => {
+                        match (f.parse::<f64>(),s.parse::<f64>()) {
+                            (Ok(ff), Ok(ss)) => {
+                                ff.total_cmp(&ss)
+                            },
+                            _ => {
+                                f.cmp(s)
+                            }
+                        }
+                    }
+                }
+            },
             (serde_json::Value::Number(f), serde_json::Value::Number(s)) => {
                 if f.is_u64() && s.is_u64() {
                     f.as_u64().unwrap().cmp(&s.as_u64().unwrap())
@@ -510,7 +554,23 @@ impl CosmosRustBotValue {
                     Ordering::Equal
                 }
             }
-            _ => first.to_string().cmp(&second.to_string()),
+            _ => {
+                match (first.to_string().parse::<u64>(),second.to_string().parse::<u64>()) {
+                    (Ok(ff), Ok(ss)) => {
+                        ff.cmp(&ss)
+                    },
+                    _ => {
+                        match (first.to_string().parse::<f64>(),second.to_string().parse::<f64>()) {
+                            (Ok(ff), Ok(ss)) => {
+                                ff.total_cmp(&ss)
+                            },
+                            _ => {
+                                first.to_string().cmp(&second.to_string())
+                            }
+                        }
+                    }
+                }
+            },
         });
         Index {
             name: name.to_string(),

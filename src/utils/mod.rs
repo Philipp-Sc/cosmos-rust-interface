@@ -4,13 +4,15 @@ pub mod entry;
 #[cfg(any(feature = "interface", feature = "postproc"))]
 pub mod response;
 
+use std::ffi::OsStr;
+use std::process;
+use std::process::Output;
 // contains functions
 use serde_json::Value;
 use serde_json::json;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use chrono::Utc;
-
 
 pub fn duration_to_string(duration: chrono::Duration) -> String {
     let days = ((duration.num_seconds() / 60) / 60) / 24;

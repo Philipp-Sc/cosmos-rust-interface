@@ -6,6 +6,9 @@ pub mod socket;
 pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
     //db.insert(notification.key(), notification.value()).ok();
     match notification {
+        CosmosRustServerValue::UserMetaData(_) => {
+            db.insert(notification.key(), notification.value()).ok();
+        }
         CosmosRustServerValue::Notify(_) => {
             db.insert(notification.key(), notification.value()).ok();
         }
@@ -60,11 +63,14 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                     msg.append(&mut msg_1);
                     msg.append(&mut msg_2);
 
-                    let notify = CosmosRustServerValue::Notify(Notify {
-                        timestamp: Utc::now().timestamp(),
-                        msg: msg,
-                    });
-                    db.insert(notify.key(), notify.value()).ok();
+                    for user_hash in n.user_list {
+                        let notify = CosmosRustServerValue::Notify(Notify {
+                            timestamp: Utc::now().timestamp(),
+                            msg: msg.to_owned(),
+                            user_hash: user_hash,
+                        });
+                        db.insert(notify.key(), notify.value()).ok();
+                    }
                 }
                 _ => {}
             };

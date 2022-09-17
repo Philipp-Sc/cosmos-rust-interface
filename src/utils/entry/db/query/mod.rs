@@ -152,20 +152,15 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
         .map(|x| x.as_bool().unwrap_or(false))
         .unwrap_or(false);
     if subscribe || update_subscription || unsubscribe {
-        let user_name = query
-            .get("user_name")
-            .map(|x| x.as_str().unwrap_or("default_user"))
-            .unwrap_or("default_user");
+        let user_id = query
+            .get("user_id")
+            .map(|x| x.as_u64().unwrap_or(0))
+            .unwrap_or(0);
         let mut query = query.clone();
         query.as_object_mut().map(|x| {
             x.retain(|k, _| {
-                !vec![
-                    "subscribe",
-                    "user_name",
-                    "update_subscription",
-                    "unsubscribe",
-                ]
-                .contains(&k.as_str())
+                !vec!["subscribe", "user_id", "update_subscription", "unsubscribe"]
+                    .contains(&k.as_str())
             })
         });
         let query = query.to_string();
@@ -179,7 +174,7 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
                     }
                 };
                 if subscribe {
-                    s.add_user(user_name.to_string());
+                    s.add_user(user_id);
                 }
                 let mut added_or_removed_items = false;
                 if update_subscription {
@@ -202,7 +197,7 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
                     if rm {
                         db.remove(&s_key).ok();
                     } else {
-                        s.remove_user(user_name.to_string());
+                        s.remove_user(user_id);
                     }
                 }
                 if subscribe
@@ -220,7 +215,7 @@ pub fn query_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<CosmosRustB
                         user_list: HashSet::new(),
                         list: Vec::new(),
                     };
-                    s.add_user(user_name.to_string());
+                    s.add_user(user_id);
                     for e in final_res.iter() {
                         s.list.push(e.key());
                     }
