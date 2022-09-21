@@ -104,11 +104,11 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             });
                             db.insert(notify.key(), notify.value()).ok();
                         }else { // this means it was a subscription event
-                            for user_hash in n.user_list {
+                            for user_hash in n.user_list.iter() {
                                 let notify = CosmosRustServerValue::Notify(Notify {
                                     timestamp: Utc::now().timestamp(),
                                     msg: vec!["Empty".to_string()],
-                                    user_hash: user_hash,
+                                    user_hash: *user_hash,
                                 });
                                 db.insert(notify.key(), notify.value()).ok();
                             }
