@@ -1,4 +1,4 @@
-use crate::utils::entry::db::query::query_sled_db;
+use crate::utils::entry::db::query::handle_query_sled_db;
 use crate::utils::entry::{CosmosRustServerValue, Notification};
 use anyhow::Context;
 use std::collections::HashSet;
@@ -45,7 +45,7 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
         .unwrap_or(0);
     let mut notification = Notification {
         query: decoded.to_string(),
-        entries: query_sled_db(tree, decoded.clone()),
+        entries: handle_query_sled_db(tree, decoded.clone()),
         user_list: HashSet::new(),
     };
     notification.add_user(*user_id);

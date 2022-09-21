@@ -214,22 +214,22 @@ impl Subscription {
         k.append(&mut s.finish().to_ne_bytes().to_vec());
         k
     }
-    pub fn add_user(&mut self, user_id: u64) {
+    pub fn user_hash(user_id: u64) -> u64 {
         let mut s = DefaultHasher::new();
         user_id.hash(&mut s);
         let h: u64 = s.finish();
+        h
+    }
+    pub fn add_user(&mut self, user_id: u64) {
+        let h: u64 = Subscription::user_hash(user_id);
         self.user_list.insert(h);
     }
     pub fn contains_user(&self, user_id: u64) -> bool {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
+        let h: u64 = Subscription::user_hash(user_id);
         self.user_list.contains(&h)
     }
     pub fn remove_user(&mut self, user_id: u64) -> bool {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
+        let h: u64 = Subscription::user_hash(user_id);
         self.user_list.remove(&h)
     }
 }
