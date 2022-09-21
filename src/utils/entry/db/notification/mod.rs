@@ -46,17 +46,35 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         });
                         db.insert(notify.key(), notify.value()).ok();
                     }else {
-                        for entry in n.entries {
-                            match entry {
-                                CosmosRustBotValue::Subscription(sub) => {
-                                    let notify = CosmosRustServerValue::Notify(Notify {
-                                        timestamp: Utc::now().timestamp(),
-                                        msg: vec![sub.get_query().get("message").map(|x| format!("/{}",x.as_str().unwrap_or("Error: Could not parse message!")).replace(" ","_")).unwrap_or("Error: No message defined!".to_string())],
-                                        user_hash: user_hash.unwrap(),
-                                    });
-                                    db.insert(notify.key(), notify.value()).ok();
+                        if let Some(user_hash) = user_hash {
+                            for entry in n.entries {
+                                match entry {
+                                    CosmosRustBotValue::Subscription(sub) => {
+                                        let notify = CosmosRustServerValue::Notify(Notify {
+                                            timestamp: Utc::now().timestamp(),
+                                            msg: vec![sub.get_query().get("message").map(|x| format!("/{}", x.as_str().unwrap_or("Error: Could not parse message!")).replace(" ", "_")).unwrap_or("Error: No message defined!".to_string())],
+                                            user_hash: user_hash,
+                                        });
+                                        db.insert(notify.key(), notify.value()).ok();
+                                    }
+                                    _ => {}
                                 }
-                                _ => {}
+                            }
+                        }else{
+                            for entry in n.entries {
+                                match entry {
+                                    CosmosRustBotValue::Subscription(sub) => {
+                                        for user_hash in sub.user_list {
+                                            let notify = CosmosRustServerValue::Notify(Notify {
+                                                timestamp: Utc::now().timestamp(),
+                                                msg: vec![sub.get_query().get("message").map(|x| format!("/{}", x.as_str().unwrap_or("Error: Could not parse message!")).replace(" ", "_")).unwrap_or("Error: No message defined!".to_string())],
+                                                user_hash: user_hash,
+                                            });
+                                            db.insert(notify.key(), notify.value()).ok();
+                                        }
+                                    }
+                                    _ => {}
+                                }
                             }
                         }
                     }
