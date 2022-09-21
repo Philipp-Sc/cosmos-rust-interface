@@ -214,23 +214,14 @@ impl Subscription {
         k.append(&mut s.finish().to_ne_bytes().to_vec());
         k
     }
-    pub fn user_hash(user_id: u64) -> u64 {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
-        h
+    pub fn add_user_hash(&mut self, user_hash: u64) {
+        self.user_list.insert(user_hash);
     }
-    pub fn add_user(&mut self, user_id: u64) {
-        let h: u64 = Subscription::user_hash(user_id);
-        self.user_list.insert(h);
+    pub fn contains_user_hash(&self, user_hash: u64) -> bool {
+        self.user_list.contains(&user_hash)
     }
-    pub fn contains_user(&self, user_id: u64) -> bool {
-        let h: u64 = Subscription::user_hash(user_id);
-        self.user_list.contains(&h)
-    }
-    pub fn remove_user(&mut self, user_id: u64) -> bool {
-        let h: u64 = Subscription::user_hash(user_id);
-        self.user_list.remove(&h)
+    pub fn remove_user_hash(&mut self, user_hash: u64) -> bool {
+        self.user_list.remove(&user_hash)
     }
 }
 
@@ -269,23 +260,15 @@ impl Notification {
         k.append(&mut s.finish().to_ne_bytes().to_vec());
         k
     }
-    pub fn add_user(&mut self, user_id: u64) {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
-        self.user_list.insert(h);
+
+    fn add_user_hash(&mut self, user_hash: u64) {
+        self.user_list.insert(user_hash);
     }
-    pub fn contains_user(&self, user_id: u64) -> bool {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
-        self.user_list.contains(&h)
+    pub fn contains_user_hash(&self, user_hash: u64) -> bool {
+        self.user_list.contains(&user_hash)
     }
-    pub fn remove_user(&mut self, user_id: u64) -> bool {
-        let mut s = DefaultHasher::new();
-        user_id.hash(&mut s);
-        let h: u64 = s.finish();
-        self.user_list.remove(&h)
+    pub fn remove_user_hash(&mut self, user_hash: u64) -> bool {
+        self.user_list.remove(&user_hash)
     }
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

@@ -39,8 +39,8 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
     let decoded = super::super::socket::get_decoded_from_stream(&mut unix_stream)?;
     //println!("We received this message: {:?}\nReplying...", &decoded);
 
-    let user_id = &decoded
-        .get("user_id")
+    let user_hash = &decoded
+        .get("user_hash")
         .map(|x| x.as_u64().unwrap_or(0))
         .unwrap_or(0);
     let mut notification = Notification {
@@ -48,7 +48,7 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
         entries: handle_query_sled_db(tree, decoded.clone()),
         user_list: HashSet::new(),
     };
-    notification.add_user(*user_id);
+    notification.add_user_hash(*user_hash);
 
     //println!("We send this response: {:?}", &field_list);
 

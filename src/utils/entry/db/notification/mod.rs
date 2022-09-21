@@ -22,8 +22,8 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
 
             let user_hash = query
-                .get("user_id")
-                .map(|x| Subscription::user_hash(x.as_u64().unwrap_or(0)));
+                .get("user_hash")
+                .map(|x| x.as_u64().unwrap_or(0));
 
 
             let unsubscribe = query
@@ -78,12 +78,23 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         });
                         db.insert(notify.key(), notify.value()).ok();
                     }else if n.entries.is_empty() {
-                        let notify = CosmosRustServerValue::Notify(Notify {
-                            timestamp: Utc::now().timestamp(),
-                            msg: vec!["Empty".to_string()],
-                            user_hash: user_hash.unwrap(),
-                        });
-                        db.insert(notify.key(), notify.value()).ok();
+                        if let Some(user_hash) = user_hash { // this means it was a request
+                            let notify = CosmosRustServerValue::Notify(Notify {
+                                timestamp: Utc::now().timestamp(),
+                                msg: vec!["Empty".to_string()],
+                                user_hash: user_hash,
+                            });
+                            db.insert(notify.key(), notify.value()).ok();
+                        }else { // this means it was a subscription event
+                            for user_hash in n.user_list {
+                                let notify = CosmosRustServerValue::Notify(Notify {
+                                    timestamp: Utc::now().timestamp(),
+                                    msg: vec!["Empty".to_string()],
+                                    user_hash: user_hash,
+                                });
+                                db.insert(notify.key(), notify.value()).ok();
+                            }
+                        }
                     }else{
 
                     let fields: Option<Option<Vec<String>>> = query.get("fields").map(|x| {

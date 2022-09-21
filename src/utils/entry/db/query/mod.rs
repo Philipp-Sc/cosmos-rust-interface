@@ -20,8 +20,8 @@ pub fn query_subscriptions_sled_db(db: &sled::Db, query: serde_json::Value) -> V
 
     // serde_json::json!({"handler":"query_subscriptions", "unsubscribe":true, "user_id":0})
 
-    let user_id = query
-        .get("user_id")
+    let user_hash = query
+        .get("user_hash")
         .map(|x| x.as_u64().unwrap_or(0))
         .unwrap_or(0);
 
@@ -38,10 +38,10 @@ pub fn query_subscriptions_sled_db(db: &sled::Db, query: serde_json::Value) -> V
             match &val {
                 CosmosRustBotValue::Subscription(subscription) => {
                     let mut new_subscription = subscription.clone();
-                     if new_subscription.contains_user(user_id) {
+                     if new_subscription.contains_user_hash(user_hash) {
 
                          if unsubscribe {
-                             new_subscription.remove_user(user_id);
+                             new_subscription.remove_user_hash(user_hash);
                              let new_val = CosmosRustBotValue::Subscription(new_subscription);
                              db.insert(new_val.key(), new_val.value()).ok();
                          }
@@ -200,14 +200,14 @@ pub fn query_entries_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<Cos
         .map(|x| x.as_bool().unwrap_or(false))
         .unwrap_or(false);
     if subscribe || update_subscription || unsubscribe {
-        let user_id = query
-            .get("user_id")
+        let user_hash = query
+            .get("user_hash")
             .map(|x| x.as_u64().unwrap_or(0))
             .unwrap_or(0);
         let mut query = query.clone();
         query.as_object_mut().map(|x| {
             x.retain(|k, _| {
-                !vec!["subscribe", "user_id", "update_subscription", "unsubscribe"]
+                !vec!["subscribe", "user_hash", "update_subscription", "unsubscribe"]
                     .contains(&k.as_str())
             })
         });
@@ -222,7 +222,7 @@ pub fn query_entries_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<Cos
                     }
                 };
                 if subscribe {
-                    s.add_user(user_id);
+                    s.add_user_hash(user_hash);
                 }
                 let mut added_or_removed_items = false;
                 if update_subscription {
@@ -245,7 +245,7 @@ pub fn query_entries_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<Cos
                     if rm {
                         db.remove(&s_key).ok();
                     } else {
-                        s.remove_user(user_id);
+                        s.remove_user_hash(user_hash);
                     }
                 }
                 if subscribe
@@ -263,7 +263,7 @@ pub fn query_entries_sled_db(db: &sled::Db, query: serde_json::Value) -> Vec<Cos
                         user_list: HashSet::new(),
                         list: Vec::new(),
                     };
-                    s.add_user(user_id);
+                    s.add_user_hash(user_hash);
                     for e in final_res.iter() {
                         s.list.push(e.key());
                     }
