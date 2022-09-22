@@ -1,7 +1,7 @@
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use cosmos_rust_package::api::core::cosmos::public_key_from_seed_phrase;
-use enum_as_inner::EnumAsInner;
-use cosmos_rust_package::api::custom::query::gov::ProposalExt;
+//use enum_as_inner::EnumAsInner;
+//use cosmos_rust_package::api::custom::query::gov::ProposalExt;
 
 // to query the blockchain for on-chain information
 // query blocks, block height, meta information, past transactions

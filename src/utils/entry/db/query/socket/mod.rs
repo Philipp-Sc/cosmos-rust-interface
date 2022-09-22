@@ -1,10 +1,9 @@
 use crate::utils::entry::db::query::handle_query_sled_db;
-use crate::utils::entry::{CosmosRustServerValue, Notification, QueryPart, UserQuery};
+use crate::utils::entry::{CosmosRustServerValue, Notification, UserQuery};
 use anyhow::Context;
 use std::collections::HashSet;
 use std::io::Write;
-use std::os::unix::net::{UnixListener, UnixStream};
-
+use std::os::unix::net::{UnixListener,UnixStream};
 pub fn spawn_socket_query_server(tree: &sled::Db) {
     let tree_2 = tree.clone();
     let _thread = std::thread::spawn(move || {

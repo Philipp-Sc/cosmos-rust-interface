@@ -14,7 +14,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
         }
         CosmosRustServerValue::Notification(n) => {
             match n.query.query_part {
-                QueryPart::SubscriptionsQueryPart(query_part) => {
+                QueryPart::SubscriptionsQueryPart(_query_part) => {
                     if let Some(user_hash) = n.query.settings_part.user_hash {
                         if n.entries.is_empty() {
                             let notify = CosmosRustServerValue::Notify(Notify {

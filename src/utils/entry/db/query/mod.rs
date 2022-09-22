@@ -15,7 +15,7 @@ pub fn handle_query_sled_db(db: &sled::Db, query: &UserQuery) -> Vec<CosmosRustB
     }
 }
 
-pub fn query_subscriptions_sled_db(db: &sled::Db, query_part: &SubscriptionsQueryPart, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
+pub fn query_subscriptions_sled_db(db: &sled::Db, _query_part: &SubscriptionsQueryPart, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
     let mut res: Vec<CosmosRustBotValue> = Vec::new();
 
     if let Some(user_hash) = settings_part.user_hash {

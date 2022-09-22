@@ -1,13 +1,8 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::iter;
-use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt};
 use crate::utils::entry::*;
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
-use serde_json::json;
 use crate::utils::response::{ResponseResult,BlockchainQuery};
 
 
@@ -36,7 +31,7 @@ fn list_latest_with(view: &mut Vec<CosmosRustBotValue>, maybes: &HashMap<String,
     });
 
     if proposals.len() >0 {
-        for (i,(proposal,origin,timestamp)) in proposals.iter().enumerate() {
+        for (proposal,origin,timestamp) in proposals.iter() {
 
             let mut data  = serde_json::json!({
                 "proposal_id": proposal.proposal.proposal_id.to_string(),

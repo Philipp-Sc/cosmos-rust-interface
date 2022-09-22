@@ -4,9 +4,6 @@ pub mod entry;
 #[cfg(any(feature = "interface", feature = "postproc"))]
 pub mod response;
 
-use std::ffi::OsStr;
-use std::process;
-use std::process::Output;
 // contains functions
 use serde_json::Value;
 use serde_json::json;
