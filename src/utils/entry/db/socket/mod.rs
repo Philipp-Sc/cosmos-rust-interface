@@ -1,8 +1,6 @@
 use anyhow::Context;
-use serde::Serialize;
-use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::UnixStream;
 
 use crate::utils::entry::CosmosRustServerValue;
 
