@@ -11,16 +11,13 @@ pub fn encode_request(request: serde_json::Value) -> anyhow::Result<Vec<u8>> {
     // &bincode::serialize(&serde_json::json!(return_msg)).unwrap()
 }
 
-pub fn get_decoded_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<serde_json::Value> {
-    //let mut encoded: Vec<u8> = Vec::new();
-    let mut encoded: String = "".to_string();
+pub fn get_decoded_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Vec<u8>> {
+    let mut encoded: Vec<u8> = Vec::new();
     unix_stream
-        //.read_to_end(&mut encoded)
-        .read_to_string(&mut encoded)
+        .read_to_end(&mut encoded)
         .context("Failed at reading the unix stream")?;
 
-    let decoded: serde_json::Value = serde_json::from_str(&encoded).unwrap(); // bincode::deserialize(&encoded[..]).unwrap();
-    Ok(decoded)
+    Ok(encoded)
 }
 pub fn get_result_decoded_from_stream(
     unix_stream: &mut UnixStream,
@@ -36,7 +33,7 @@ pub fn get_result_decoded_from_stream(
 
 pub fn client_send_request(
     socket_path: &str,
-    request: serde_json::Value,
+    request: Vec<u8>,
 ) -> anyhow::Result<CosmosRustServerValue> {
     //let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
     let mut unix_stream = UnixStream::connect(socket_path).context("Could not create stream")?;
@@ -48,7 +45,7 @@ pub fn client_send_request(
 pub fn client_send_result_request(
     socket_path: &str,
     request: CosmosRustServerValue,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Vec<u8>> {
     //let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
     let mut unix_stream = UnixStream::connect(socket_path).context("Could not create stream")?;
 
@@ -81,10 +78,10 @@ fn read_result_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Cosmo
 
 fn write_request_and_shutdown(
     unix_stream: &mut UnixStream,
-    request: serde_json::Value,
+    request: Vec<u8>,
 ) -> anyhow::Result<()> {
     unix_stream
-        .write(&encode_request(request)?[..])
+        .write(&request)
         .context("Failed at writing onto the unix stream")?;
 
     //println!("We sent a request");
@@ -97,7 +94,7 @@ fn write_request_and_shutdown(
     Ok(())
 }
 
-fn read_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<serde_json::Value> {
+fn read_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Vec<u8>> {
     let decoded = get_decoded_from_stream(unix_stream)?;
     //println!("We received this response: {:?}", decoded);
     Ok(decoded)

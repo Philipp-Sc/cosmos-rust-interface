@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "postproc")]
@@ -181,21 +181,25 @@ impl Entry {
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Subscription {
-    pub query: String,
+    pub query: QueryPart,
     pub user_list: HashSet<u64>,
     pub list: Vec<Vec<u8>>,
 }
 impl Subscription {
-    pub fn get_query(&self) -> serde_json::Value {
-        serde_json::from_str(&self.query.as_str()).unwrap()
-    }
-    fn calculate_hash(&self) -> u64 {
+    fn get_hash(query_part: &QueryPart) -> u64 {
         let mut s = DefaultHasher::new();
-        self.query.as_str().hash(&mut s);
+        match query_part {
+            QueryPart::EntriesQueryPart(q) => {
+                q.hash(&mut s);
+            },
+            QueryPart::SubscriptionsQueryPart(q) => {
+                q.hash(&mut s);
+            },
+        }
         s.finish()
     }
-    fn get_hash(&self) -> u64 {
-        Subscription::calculate_hash(self)
+    fn calculate_hash(&self) -> u64 {
+        Subscription::get_hash(&self.query)
     }
     pub fn get_prefix() -> Vec<u8> {
         let mut k: Vec<u8> = Vec::new();
@@ -204,10 +208,10 @@ impl Subscription {
     }
     pub fn get_key(&self) -> Vec<u8> {
         let mut k: Vec<u8> = Subscription::get_prefix();
-        k.append(&mut self.get_hash().to_ne_bytes().to_vec());
+        k.append(&mut self.calculate_hash().to_ne_bytes().to_vec());
         k
     }
-    pub fn get_key_for_query(query: &str) -> Vec<u8> {
+    pub fn get_key_for_entries_query(query: &EntriesQueryPart) -> Vec<u8> {
         let mut k: Vec<u8> = Subscription::get_prefix();
         let mut s = DefaultHasher::new();
         query.hash(&mut s);
@@ -227,17 +231,14 @@ impl Subscription {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Notification {
-    pub query: String,
+    pub query: UserQuery,
     pub entries: Vec<CosmosRustBotValue>,
     pub user_list: HashSet<u64>,
 }
 impl Notification {
-    pub fn get_query(&self) -> serde_json::Value {
-        serde_json::from_str(&self.query.as_str()).unwrap()
-    }
     pub fn calculate_hash(&self) -> u64 {
         let mut s = DefaultHasher::new();
-        self.query.as_str().hash(&mut s);
+        self.query.hash(&mut s);
         s.finish()
     }
     fn get_hash(&self) -> u64 {
@@ -253,7 +254,7 @@ impl Notification {
         k.append(&mut self.get_hash().to_ne_bytes().to_vec());
         k
     }
-    pub fn get_key_for_query(query: &str) -> Vec<u8> {
+    pub fn get_key_for_query(query: &QueryPart) -> Vec<u8> {
         let mut k: Vec<u8> = Notification::get_prefix();
         let mut s = DefaultHasher::new();
         query.hash(&mut s);
@@ -297,6 +298,81 @@ impl Notify {
         let mut k: Vec<u8> = Notify::get_prefix();
         k.append(&mut self.get_hash().to_ne_bytes().to_vec());
         k
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct UserQuery {
+    pub query_part: QueryPart,
+    pub settings_part: SettingsPart,
+}
+impl Hash for UserQuery {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.query_part.hash(state);
+        self.settings_part.hash(state);
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct SettingsPart {
+    pub subscribe: Option<bool>,
+    pub unsubscribe: Option<bool>,
+    pub update_subscription: Option<bool>,
+    pub user_hash: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum QueryPart {
+    EntriesQueryPart(EntriesQueryPart),
+    SubscriptionsQueryPart(SubscriptionsQueryPart)
+}
+impl Hash for QueryPart {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match &self {
+            QueryPart::EntriesQueryPart(q) => {
+                q.hash(state);
+            },
+            QueryPart::SubscriptionsQueryPart(q) => {
+                q.hash(state);
+            },
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct EntriesQueryPart {
+    pub message: String,
+    pub fields: Vec<String>,
+    pub indices: Vec<String>,
+    pub filter: HashMap<String, String>,
+    pub order_by: String,
+    pub limit: usize,
+}
+impl Hash for EntriesQueryPart {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.message.hash(state);
+        self.fields.hash(state);
+        self.indices.hash(state);
+        let mut key_value_vector: Vec<String> = self.filter.iter().map(|(k, v)| format!("{},{}",k,v)).collect();
+        key_value_vector.sort_unstable();
+        key_value_vector.dedup();
+        key_value_vector.join(";").hash(state);
+        self.order_by.hash(state);
+        self.limit.hash(state);
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct  SubscriptionsQueryPart {
+    pub message: String,
+}
+
+impl UserQuery {
+    pub fn value(&self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+    pub fn from(value: Vec<u8>) -> UserQuery {
+        bincode::deserialize(&value[..]).unwrap()
     }
 }
 

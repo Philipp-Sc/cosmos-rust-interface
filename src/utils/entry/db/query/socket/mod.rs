@@ -1,5 +1,5 @@
 use crate::utils::entry::db::query::handle_query_sled_db;
-use crate::utils::entry::{CosmosRustServerValue, Notification};
+use crate::utils::entry::{CosmosRustServerValue, Notification, QueryPart, UserQuery};
 use anyhow::Context;
 use std::collections::HashSet;
 use std::io::Write;
@@ -39,27 +39,26 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
     let decoded = super::super::socket::get_decoded_from_stream(&mut unix_stream)?;
     //println!("We received this message: {:?}\nReplying...", &decoded);
 
-    let user_hash = &decoded
-        .get("user_hash")
-        .map(|x| x.as_u64().unwrap_or(0))
-        .unwrap_or(0);
+    let user_query: UserQuery = UserQuery::from(decoded);
+
+    let entries = handle_query_sled_db(tree, &user_query);
     let mut notification = Notification {
-        query: decoded.to_string(),
-        entries: handle_query_sled_db(tree, decoded.clone()),
+        query: user_query,
+        entries,
         user_list: HashSet::new(),
     };
-    notification.add_user_hash(*user_hash);
+    notification.add_user_hash(notification.query.settings_part.user_hash.unwrap());
 
     //println!("We send this response: {:?}", &field_list);
 
     unix_stream
-        .write(&CosmosRustServerValue::Notification(notification).value()[..])
+        .write(&CosmosRustServerValue::Notification(notification).value())
         .context("Failed at writing onto the unix stream")?;
 
     Ok(())
 }
 
-pub fn client_send_request(request: serde_json::Value) -> anyhow::Result<CosmosRustServerValue> {
+pub fn client_send_request(request: UserQuery) -> anyhow::Result<CosmosRustServerValue> {
     let socket_path = "/tmp/cosmos_rust_bot_query_socket";
-    super::super::socket::client_send_request(socket_path, request)
+    super::super::socket::client_send_request(socket_path, request.value())
 }

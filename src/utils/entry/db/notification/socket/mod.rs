@@ -45,13 +45,14 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
     //println!("We send this response: {:?}", &field_list);
 
     unix_stream
-        .write(&super::super::socket::encode_request(serde_json::json!({"response": "ok"}))?[..])
+        .write(&0_i32.to_ne_bytes())
         .context("Failed at writing onto the unix stream")?;
 
     Ok(())
 }
 
-pub fn client_send_request(request: CosmosRustServerValue) -> anyhow::Result<serde_json::Value> {
+pub fn client_send_request(request: CosmosRustServerValue) -> anyhow::Result<()> {
     let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
-    super::super::socket::client_send_result_request(socket_path, request)
+    let _result = super::super::socket::client_send_result_request(socket_path, request)?;
+    Ok(())
 }
