@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 #cosmos-rust-package = { git = "https://github.com/Philipp-Sc/cosmos-rust-package.git", optional = true }
-"cosmos-rust-package" = { path = '../cosmos-rust-package', optional = true }
+cosmos-rust-package = { path = '../cosmos-rust-package', optional = true }
 tokio = { version = "1.4", features = ["full"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
