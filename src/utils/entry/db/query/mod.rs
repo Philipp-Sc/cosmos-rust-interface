@@ -149,9 +149,8 @@ pub fn query_entries_sled_db(db: &sled::Db, query_part: &EntriesQueryPart, setti
     }
 
     let subscribe = settings_part.subscribe.unwrap_or(false);
-    let update_subscription = settings_part.update_subscription.unwrap_or(false);
     let unsubscribe = settings_part.unsubscribe.unwrap_or(false);
-    if subscribe || update_subscription || unsubscribe {
+    if subscribe || unsubscribe {
         let s_key = Subscription::get_key_for_entries_query(query_part);
         match db.get(&s_key) {
             Ok(Some(s)) => {
@@ -166,22 +165,6 @@ pub fn query_entries_sled_db(db: &sled::Db, query_part: &EntriesQueryPart, setti
                         s.add_user_hash(user_hash);
                     }
                 }
-                let mut added_or_removed_items = false;
-                if update_subscription {
-                    let final_res_keys =
-                        final_res.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
-                    for e in &final_res_keys {
-                        if !s.list.contains(&e) {
-                            added_or_removed_items = true;
-                            s.list.push(e.clone());
-                        }
-                    }
-                    let len = s.list.len();
-                    s.list.retain(|x| final_res_keys.contains(x));
-                    if len != s.list.len() {
-                        added_or_removed_items = true;
-                    }
-                }
                 let rm = s.user_list.len() <= 1;
                 if unsubscribe {
                     if let Some(user_hash) = settings_part.user_hash {
@@ -193,7 +176,6 @@ pub fn query_entries_sled_db(db: &sled::Db, query_part: &EntriesQueryPart, setti
                     }
                 }
                 if subscribe
-                    || (update_subscription && added_or_removed_items)
                     || (!rm && unsubscribe)
                 {
                     db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
@@ -221,6 +203,124 @@ pub fn query_entries_sled_db(db: &sled::Db, query_part: &EntriesQueryPart, setti
         }
     }
     final_res
+}
+
+pub fn update_subscription(db: &Vec<CosmosRustBotValue>, subscription: &mut Subscription) -> anyhow::Result<()> {
+    match &subscription.query {
+        QueryPart::EntriesQueryPart(query_part) => {
+            let mut filter: Vec<String> = query_part.filter.iter()
+                .map(|(k, v)| format!("{}_{}", k, v.to_lowercase()))
+                .collect();
+
+            let order_by: Option<&str> = Some(&query_part.order_by);
+            let limit: Option<usize> = Some(query_part.limit);
+
+            let mut indices_list: Vec<Vec<Vec<u8>>> = Vec::new();
+            let mut order_by_index: Option<Vec<Vec<u8>>> = None;
+
+            for val in db {
+                match val {
+                    CosmosRustBotValue::Index(index) => {
+                        //println!("{:?}", index.name);
+                        let index_name_in_filter = filter.contains(&index.name);
+                        if query_part.indices.contains(&index.name) || index_name_in_filter {
+                            // remember if index for filter was used
+                            if index_name_in_filter {
+                                filter.retain(|x| x != &index.name);
+                            }
+                            indices_list.push(index.list.clone());
+                        }
+                        if let Some(ord) = order_by {
+                            if &index.name == &ord {
+                                order_by_index = Some(index.list.clone());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let mut section: Vec<&Vec<u8>> = Vec::new();
+            if indices_list.len() > 1 {
+                for each in &indices_list[0] {
+                    let mut c: bool = true;
+                    for i in 1..indices_list.len() {
+                        if !indices_list[i].contains(&each) {
+                            c = false;
+                            break;
+                        }
+                    }
+                    if c {
+                        section.push(&each);
+                    }
+                }
+            } else if indices_list.len() == 1 {
+                section = indices_list[0].iter().map(|x| x).collect();
+            }
+            let mut res: Vec<CosmosRustBotValue> = Vec::new();
+            if let Some(ord) = order_by_index {
+                for each in &ord {
+                    if section.contains(&each) {
+                        db.iter().filter(|x| x.key() == *each).for_each(|x| res.push(x.clone()));
+                    }
+                }
+            } else {
+                for each in section {
+                    db.iter().filter(|x| x.key() == *each).for_each(|x| res.push(x.clone()));
+                }
+            }
+            let mut final_res: Vec<CosmosRustBotValue> = Vec::new();
+            for entry in res {
+                if filter.len() == 0
+                    || query_part.filter
+                    .iter()
+                    .filter(|(k, v)| filter.contains(&format!("{}_{}", k, v.to_lowercase())))
+                    .fold(true, |sum, (k, v)| match entry.try_get(k) {
+                        None => false,
+                        Some(val) => {
+                            if let Some(s) = val.as_str() {
+                                (v.as_str() == "any" || s == v.as_str()) && sum
+                            } else if val.is_number() {
+                                format!("{}", val).as_str() == v.as_str() && sum
+                            } else {
+                                false
+                            }
+                        }
+                    })
+                {
+                    final_res.push(entry);
+                }
+            }
+            if let Some(l) = limit {
+                final_res = final_res.into_iter().take(l).collect();
+            }
+
+
+            let mut added_items = false;
+            let mut removed_items = false;
+
+            let final_res_keys =
+                final_res.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
+            for e in &final_res_keys {
+                if !subscription.list.contains(&e) {
+                    added_items = true;
+                    subscription.list.push(e.clone());
+                }
+            }
+            let len = subscription.list.len();
+            subscription.list.retain(|x| final_res_keys.contains(x));
+            if len != subscription.list.len() {
+                removed_items = true;
+            }
+            if added_items || removed_items
+            {
+                return Ok(())
+            }
+            Err(anyhow::anyhow!("Error: Nothing to update"))
+        },
+        QueryPart::SubscriptionsQueryPart(_) => {
+            Err(anyhow::anyhow!("Error: Subscription expected"))
+        }
+    }
 }
 
 /*pub fn query_entries(entries: &Vec<CosmosRustBotValue>, filter: HashMap<String, String>, order_by: String, limit: usize) -> Vec<&CosmosRustBotValue> {

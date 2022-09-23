@@ -317,7 +317,6 @@ impl Hash for UserQuery {
 pub struct SettingsPart {
     pub subscribe: Option<bool>,
     pub unsubscribe: Option<bool>,
-    pub update_subscription: Option<bool>,
     pub user_hash: Option<u64>,
 }
 
