@@ -14,7 +14,7 @@ pub fn governance_proposal_notifications(maybes: &HashMap<String, Maybe<Response
     CosmosRustBotValue::add_index(&mut view,"proposal_id","proposal_id");
     // add index for timestamps
     ProposalTime::iter().for_each(|time| {
-        let k = format!("proposal_{}",time.to_string().to_lowercase());
+        let k = format!("proposal_{}",time.to_string());
         CosmosRustBotValue::add_index(&mut view,k.as_str(),k.as_str());
     });
 
@@ -34,7 +34,7 @@ fn list_latest_with(view: &mut Vec<CosmosRustBotValue>, maybes: &HashMap<String,
         for (proposal,origin,timestamp) in proposals.iter() {
 
             let mut data  = serde_json::json!({
-                "proposal_id": proposal.proposal.proposal_id.to_string(),
+                "proposal_id": proposal.proposal.proposal_id,
                 "proposal_blockchain": proposal.blockchain_name.to_string(),
                 "proposal_status": proposal.status.to_string(),
                 "proposal_type": proposal.content.to_string()
@@ -42,7 +42,7 @@ fn list_latest_with(view: &mut Vec<CosmosRustBotValue>, maybes: &HashMap<String,
             ProposalTime::iter().for_each(|time| {
                 match (proposal.time(&time), time.to_string()) {
                     (Some(t), time_key) => {
-                        data.as_object_mut().unwrap().insert(format!("proposal_{}", time_key.to_lowercase()), serde_json::json!(t.seconds/*{"seconds":t.seconds,"nanos":t.nanos}*/));
+                        data.as_object_mut().unwrap().insert(format!("proposal_{}", time_key), serde_json::json!(t.seconds/*{"seconds":t.seconds,"nanos":t.nanos}*/));
                     },
                     _ => {}
                 }

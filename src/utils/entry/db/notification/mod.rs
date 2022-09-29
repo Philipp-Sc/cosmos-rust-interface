@@ -54,13 +54,15 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 user_hash,
                             });
                             db.insert(notify.key(), notify.value()).ok();
-                        } else if n.query.settings_part.subscribe.unwrap_or(false) {
+                            return;
+                        } else if n.query.settings_part.unsubscribe.unwrap_or(false) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["Unsubscribed".to_string()],
                                 user_hash,
                             });
                             db.insert(notify.key(), notify.value()).ok();
+                            return;
                         } else if n.entries.is_empty() {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
@@ -68,6 +70,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 user_hash,
                             });
                             db.insert(notify.key(), notify.value()).ok();
+                            return;
                         }
                     }
                     if n.entries.is_empty() {

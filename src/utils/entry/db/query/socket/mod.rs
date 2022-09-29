@@ -58,6 +58,7 @@ fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result
 }
 
 pub fn client_send_request(request: UserQuery) -> anyhow::Result<CosmosRustServerValue> {
+    //println!("{:?}",&request);
     let socket_path = "/tmp/cosmos_rust_bot_query_socket";
     super::super::socket::client_send_request(socket_path, request.value())
 }

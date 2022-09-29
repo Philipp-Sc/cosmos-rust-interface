@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "postproc")]
@@ -343,7 +343,7 @@ pub struct EntriesQueryPart {
     pub message: String,
     pub fields: Vec<String>,
     pub indices: Vec<String>,
-    pub filter: HashMap<String, String>,
+    pub filter: Vec<Vec<(String, String)>>,
     pub order_by: String,
     pub limit: usize,
 }
@@ -352,10 +352,11 @@ impl Hash for EntriesQueryPart {
         self.message.hash(state);
         self.fields.hash(state);
         self.indices.hash(state);
-        let mut key_value_vector: Vec<String> = self.filter.iter().map(|(k, v)| format!("{},{}",k,v)).collect();
+        /*
+        let mut key_value_vector: Vec<String> = self.filter.iter().flatten().enumerate().map(|(i,x)| format!("{},{},{}",i,x.0,x.1)).collect();
         key_value_vector.sort_unstable();
-        key_value_vector.dedup();
-        key_value_vector.join(";").hash(state);
+        key_value_vector.join(";").hash(state);*/
+        bincode::serialize(&self.filter).unwrap().hash(state);
         self.order_by.hash(state);
         self.limit.hash(state);
     }
@@ -540,7 +541,7 @@ impl CosmosRustBotValue {
                 let membership = CosmosRustBotValue::create_membership(
                     &entries,
                     None,
-                    format!("{}_{}", field, variant.to_lowercase()).as_str(),
+                    format!("{}_{}", field, variant).as_str(),
                 );
                 view.push(CosmosRustBotValue::Index(membership));
             }
