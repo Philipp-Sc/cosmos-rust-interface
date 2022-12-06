@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use cosmos_rust_package::api::custom::query::gov::{ProposalExt};
+use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::*;
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
@@ -117,13 +117,15 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                view.push(
-                    CosmosRustBotValue::Entry(Entry::Value(Value {
-                        timestamp: timestamp.to_owned(),
-                        origin: origin.to_owned(),
-                        summary: proposal.custom_display(fraud_classification),
-                        custom_data: data.to_custom_data()
-                    })));
+                if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
+                    view.push(
+                        CosmosRustBotValue::Entry(Entry::Value(Value {
+                            timestamp: timestamp.to_owned(),
+                            origin: origin.to_owned(),
+                            summary: proposal.custom_display(fraud_classification),
+                            custom_data: data.to_custom_data()
+                        })));
+                }
 
 
                 // proposals_for_csv.push(data);
