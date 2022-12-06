@@ -126,7 +126,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     })));
 
 
-                proposals_for_csv.push(data);
+                // proposals_for_csv.push(data);
             }
         }
     }
