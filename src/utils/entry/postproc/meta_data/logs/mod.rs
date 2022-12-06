@@ -1,7 +1,7 @@
 use crate::utils::entry::*;
 use crate::utils::response::ResponseResult;
 use std::collections::HashMap;
-
+/*
 pub fn logs(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<CosmosRustBotValue> {
     let mut view: Vec<CosmosRustBotValue> = Vec::new();
 
@@ -29,4 +29,4 @@ pub fn logs(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<CosmosRustBo
     }
     CosmosRustBotValue::add_membership(&mut view, None, "task_meta_data_logs");
     view
-}
+}*/

@@ -30,9 +30,11 @@ secp256k1 = { workspace = true, default-features = false }
 rust-crypto = "^0.2"
 thiserror = { version = "1.0.21" }
 eyre = "0.6"
+rust-bert-fraud-detection-socket-ipc = { workspace = true, optional = true }
+#csv = "1.1.6" # temporary
 
 [features]
 default = ["interface","postproc","db"]
-interface = ["cosmos-rust-package"]
+interface = ["cosmos-rust-package","rust-bert-fraud-detection-socket-ipc"]
 postproc = ["cosmos-rust-package"]
 db = ["sled","bincode"]

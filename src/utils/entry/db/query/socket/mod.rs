@@ -1,64 +1,38 @@
 use crate::utils::entry::db::query::handle_query_sled_db;
 use crate::utils::entry::{CosmosRustServerValue, Notification, UserQuery};
-use anyhow::Context;
 use std::collections::HashSet;
-use std::io::Write;
-use std::os::unix::net::{UnixListener,UnixStream};
-pub fn spawn_socket_query_server(tree: &sled::Db) {
-    let tree_2 = tree.clone();
-    let _thread = std::thread::spawn(move || {
-        loop {
-            let socket_path = "/tmp/cosmos_rust_bot_query_socket";
+use super::super::socket::{client_send_request, Handler, spawn_socket_service};
+use std::thread::JoinHandle;
 
-            if std::fs::metadata(socket_path).is_ok() {
-                //println!("A socket is already present. Deleting...");
-                std::fs::remove_file(socket_path)
-                    .with_context(|| {
-                        format!("could not delete previous socket at {:?}", socket_path)
-                    })
-                    .unwrap();
-            }
-
-            let unix_listener = UnixListener::bind(socket_path)
-                .context("Could not create the unix socket")
-                .unwrap();
-
-            loop {
-                let (unix_stream, _socket_address) = unix_listener
-                    .accept()
-                    .context("Failed at accepting a connection on the unix listener")
-                    .unwrap();
-                handle_stream(unix_stream, &tree_2).unwrap();
-            }
-        }
-    });
+pub fn spawn_socket_query_server(socket_path: &str, tree: &sled::Db) -> JoinHandle<()> {
+    println!("spawn_socket_service startup");
+    let task = spawn_socket_service(socket_path,Box::new(QueryHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
+    println!("spawn_socket_service ready");
+    task
 }
-
-fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result<()> {
-    let decoded = super::super::socket::get_decoded_from_stream(&mut unix_stream)?;
-    //println!("We received this message: {:?}\nReplying...", &decoded);
-
-    let user_query: UserQuery = UserQuery::from(decoded);
-
-    let entries = handle_query_sled_db(tree, &user_query);
-    let mut notification = Notification {
-        query: user_query,
-        entries,
-        user_list: HashSet::new(),
-    };
-    notification.add_user_hash(notification.query.settings_part.user_hash.unwrap());
-
-    //println!("We send this response: {:?}", &field_list);
-
-    unix_stream
-        .write(&CosmosRustServerValue::Notification(notification).value())
-        .context("Failed at writing onto the unix stream")?;
-
-    Ok(())
+pub struct QueryHandler
+{
+    pub tree: sled::Db,
 }
+impl Handler for QueryHandler
+{
+    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
 
-pub fn client_send_request(request: UserQuery) -> anyhow::Result<CosmosRustServerValue> {
-    //println!("{:?}",&request);
-    let socket_path = "/tmp/cosmos_rust_bot_query_socket";
-    super::super::socket::client_send_request(socket_path, request.value())
+        let user_query: UserQuery = UserQuery::try_from(bytes)?;
+
+        let entries = handle_query_sled_db(&self.tree, &user_query);
+        let mut notification = Notification {
+            query: user_query,
+            entries,
+            user_list: HashSet::new(),
+        };
+        notification.add_user_hash(notification.query.settings_part.user_hash.unwrap());
+
+        let result: Vec<u8> = CosmosRustServerValue::Notification(notification).try_into()?;
+        Ok(result)
+    }
+}
+pub fn client_send_query_request(socket_path: &str, request: UserQuery) -> anyhow::Result<CosmosRustServerValue> {
+    println!("client_send_request initiating");
+    client_send_request(socket_path,request)
 }

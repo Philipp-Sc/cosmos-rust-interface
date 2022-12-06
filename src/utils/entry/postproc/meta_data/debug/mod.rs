@@ -2,7 +2,7 @@ use crate::utils::entry::*;
 use crate::utils::response::ResponseResult;
 use std::collections::HashMap;
 
-pub fn debug(maybes: &HashMap<String, Maybe<ResponseResult>>) -> Vec<CosmosRustBotValue> {
+pub fn debug(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> Vec<CosmosRustBotValue> {
     let mut view: Vec<CosmosRustBotValue> = Vec::new();
 
     for (key, value) in maybes {

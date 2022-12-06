@@ -7,10 +7,10 @@ pub mod socket;
 pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
     match notification {
         CosmosRustServerValue::UserMetaData(_) => {
-            db.insert(notification.key(), notification.value()).ok();
+            db.insert(notification.key(), TryInto::<Vec<u8>>::try_into(notification).unwrap()).ok();
         }
         CosmosRustServerValue::Notify(_) => {
-            db.insert(notification.key(), notification.value()).ok();
+            db.insert(notification.key(), TryInto::<Vec<u8>>::try_into(notification).unwrap()).ok();
         }
         CosmosRustServerValue::Notification(n) => {
             match n.query.query_part {
@@ -22,7 +22,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: vec!["You have no subscriptions registered.".to_string()],
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                         } else {
                             for entry in n.entries {
                                 match entry {
@@ -35,7 +35,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                     msg: vec![format!("/{}",query_part.message.replace(" ", "_"))],
                                                     user_hash,
                                                 });
-                                                db.insert(notify.key(), notify.value()).ok();
+                                                db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                                             },
                                         }
                                     }
@@ -53,7 +53,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: vec!["Subscribed".to_string()],
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                             return;
                         } else if n.query.settings_part.unsubscribe.unwrap_or(false) {
                             let notify = CosmosRustServerValue::Notify(Notify {
@@ -61,7 +61,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: vec!["Unsubscribed".to_string()],
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                             return;
                         } else if n.entries.is_empty() {
                             let notify = CosmosRustServerValue::Notify(Notify {
@@ -69,7 +69,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: vec!["Empty".to_string()],
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                             return;
                         }
                     }
@@ -80,7 +80,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: vec!["Empty".to_string()],
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                         }
                     } else {
                         let mut field_list: Vec<HashMap<String, String>> = Vec::new();
@@ -129,7 +129,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 msg: msg.to_owned(),
                                 user_hash,
                             });
-                            db.insert(notify.key(), notify.value()).ok();
+                            db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                         }else{
                             for user_hash in n.user_list {
                                 let notify = CosmosRustServerValue::Notify(Notify {
@@ -137,7 +137,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                     msg: msg.to_owned(),
                                     user_hash,
                                 });
-                                db.insert(notify.key(), notify.value()).ok();
+                                db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
                             }
                         }
                     }

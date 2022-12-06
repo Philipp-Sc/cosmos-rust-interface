@@ -1,60 +1,51 @@
-
-
 use crate::utils::entry::db::notification::notify_sled_db;
 use crate::utils::entry::CosmosRustServerValue;
-use anyhow::Context;
-use std::io::Write;
-use std::os::unix::net::{UnixListener, UnixStream};
 
-pub fn spawn_socket_notification_server(tree: &sled::Db) {
-    let tree_2 = tree.clone();
-    let _thread = std::thread::spawn(move || {
-        loop {
-            // TODO create dir with specific access rights
-            let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
+use std::collections::HashSet;
+use super::super::socket::{client_send_request, Handler, spawn_socket_service};
+use std::thread::JoinHandle;
 
-            if std::fs::metadata(socket_path).is_ok() {
-                //println!("A socket is already present. Deleting...");
-                std::fs::remove_file(socket_path)
-                    .with_context(|| {
-                        format!("could not delete previous socket at {:?}", socket_path)
-                    })
-                    .unwrap();
-            }
+pub fn spawn_socket_notification_server(socket_path: &str, tree: &sled::Db) -> JoinHandle<()> {
+    println!("spawn_socket_service startup");
+    let task = spawn_socket_service(socket_path,Box::new(NotificationHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
+    println!("spawn_socket_service ready");
+    task
+}
+pub struct NotificationHandler
+{
+    pub tree: sled::Db,
+}
+impl Handler for NotificationHandler
+{
+    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
 
-            let unix_listener = UnixListener::bind(socket_path)
-                .context("Could not create the unix socket")
-                .unwrap();
+        let request: CosmosRustServerValue = bytes.try_into()?;
 
-            loop {
-                let (unix_stream, _socket_address) = unix_listener
-                    .accept()
-                    .context("Failed at accepting a connection on the unix listener")
-                    .unwrap();
-                handle_stream(unix_stream, &tree_2).unwrap();
-            }
-        }
-    });
+        notify_sled_db(&self.tree, request);
+
+        let result: Vec<u8> = NotifyResult{}.try_into()?;
+        Ok(result)
+    }
+}
+pub fn client_send_notification_request(socket_path: &str, request: CosmosRustServerValue) -> anyhow::Result<NotifyResult> {
+    println!("client_send_request initiating");
+    client_send_request(socket_path,request)
 }
 
-fn handle_stream(mut unix_stream: UnixStream, tree: &sled::Db) -> anyhow::Result<()> {
-    let decoded = super::super::socket::get_result_decoded_from_stream(&mut unix_stream)?;
-    //println!("We received this message: {:?}\nReplying...", &decoded);
-
-    //println!("{:?}", decoded);
-    notify_sled_db(tree, decoded);
-
-    //println!("We send this response: {:?}", &field_list);
-
-    unix_stream
-        .write(&0_i32.to_ne_bytes())
-        .context("Failed at writing onto the unix stream")?;
-
-    Ok(())
+#[derive(serde::Serialize,serde::Deserialize,Debug)]
+pub struct NotifyResult {
 }
 
-pub fn client_send_request(request: CosmosRustServerValue) -> anyhow::Result<()> {
-    let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
-    let _result = super::super::socket::client_send_result_request(socket_path, request)?;
-    Ok(())
+impl TryFrom<Vec<u8>> for NotifyResult {
+    type Error = anyhow::Error;
+    fn try_from(item: Vec<u8>) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(&item[..])?)
+    }
+}
+
+impl TryFrom<NotifyResult> for Vec<u8> {
+    type Error = anyhow::Error;
+    fn try_from(item: NotifyResult) -> anyhow::Result<Self> {
+        Ok(bincode::serialize(&item)?)
+    }
 }

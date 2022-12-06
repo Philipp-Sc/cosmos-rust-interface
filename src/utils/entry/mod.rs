@@ -4,6 +4,13 @@ use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashSet};
 use std::hash::{Hash, Hasher};
+use std::convert::From;
+
+use std::{
+    cmp::PartialEq,
+    error::Error as StdError,
+    fmt::{self, Display},
+};
 
 #[cfg(feature = "postproc")]
 pub mod postproc;
@@ -11,29 +18,48 @@ pub mod postproc;
 #[cfg(feature = "db")]
 pub mod db;
 
-#[derive(Debug)]
+#[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Maybe<T> {
-    pub data: anyhow::Result<T>,
+    pub data: Result<T,MaybeError>,
     pub timestamp: i64,
 }
 
-impl<T: Clone> Clone for Maybe<T> {
-    fn clone(&self) -> Maybe<T> {
-        match self {
-            Maybe {
-                data: Err(err),
-                timestamp,
-            } => Maybe {
-                data: Err(anyhow::anyhow!(err.to_string())),
-                timestamp: *timestamp,
-            },
-            Maybe {
-                data: Ok(value),
-                timestamp,
-            } => Maybe {
-                data: Ok(value.clone()),
-                timestamp: *timestamp,
-            },
+impl <T: for<'a> Deserialize<'a>>TryFrom<Vec<u8>> for Maybe<T> {
+    type Error = anyhow::Error;
+    fn try_from(item: Vec<u8>) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(&item[..])?)
+    }
+}
+
+impl <T: Serialize>TryFrom<Maybe<T>> for Vec<u8> {
+    type Error = anyhow::Error;
+    fn try_from(item: Maybe<T>) -> anyhow::Result<Self> {
+        Ok(bincode::serialize(&item)?)
+    }
+}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub enum MaybeError {
+    NotYetResolved(String),
+    KeyDoesNotExist(String),
+    EntryReserved(String),
+    AnyhowError(String),
+}
+
+impl StdError for MaybeError {}
+
+impl Display for MaybeError {
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> std::result::Result<(), fmt::Error> {
+        use self::MaybeError::*;
+
+        match *self {
+            NotYetResolved(ref key) => write!(f, "Error: Not yet resolved!: {}", key),
+            KeyDoesNotExist(ref key) => write!(f, "Error: Key does not exist!: {}", key),
+            EntryReserved(ref key) => write!(f, "Error: Entry reserved!: {}", key),
+            AnyhowError(ref text) => write!(f, "{}", text),
         }
     }
 }
@@ -312,6 +338,18 @@ impl Hash for UserQuery {
         self.settings_part.hash(state);
     }
 }
+impl TryFrom<Vec<u8>> for UserQuery {
+    type Error = anyhow::Error;
+    fn try_from(item: Vec<u8>) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(&item[..])?)
+    }
+}
+impl TryFrom<UserQuery> for Vec<u8> {
+    type Error = anyhow::Error;
+    fn try_from(item: UserQuery) -> anyhow::Result<Self> {
+        Ok(bincode::serialize(&item)?)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
 pub struct SettingsPart {
@@ -367,15 +405,6 @@ pub struct  SubscriptionsQueryPart {
     pub message: String,
 }
 
-impl UserQuery {
-    pub fn value(&self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    }
-    pub fn from(value: Vec<u8>) -> UserQuery {
-        bincode::deserialize(&value[..]).unwrap()
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct UserMetaData {
     pub timestamp: i64,
@@ -406,6 +435,21 @@ pub enum CosmosRustServerValue {
     Notify(Notify),
     UserMetaData(UserMetaData),
 }
+
+impl TryFrom<Vec<u8>> for CosmosRustServerValue {
+    type Error = anyhow::Error;
+    fn try_from(item: Vec<u8>) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(&item[..])?)
+    }
+}
+
+impl TryFrom<CosmosRustServerValue> for Vec<u8> {
+    type Error = anyhow::Error;
+    fn try_from(item: CosmosRustServerValue) -> anyhow::Result<Self> {
+        Ok(bincode::serialize(&item)?)
+    }
+}
+
 impl CosmosRustServerValue {
     pub fn key(&self) -> Vec<u8> {
         match self {
@@ -413,12 +457,6 @@ impl CosmosRustServerValue {
             CosmosRustServerValue::Notify(entry) => entry.get_key(),
             CosmosRustServerValue::UserMetaData(entry) => entry.get_key(),
         }
-    }
-    pub fn value(&self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    }
-    pub fn from(value: Vec<u8>) -> CosmosRustServerValue {
-        bincode::deserialize(&value[..]).unwrap()
     }
 }
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -456,7 +494,7 @@ pub enum CosmosRustBotValue {
 }
 
 impl CosmosRustBotValue {
-    pub fn key(&self) -> Vec<u8> {
+    pub fn key(&self) -> Vec<u8> { // todo: make this a trait.
         match self {
             CosmosRustBotValue::Entry(entry) => entry.get_key(),
             CosmosRustBotValue::Index(index) => index.get_key(),
@@ -465,11 +503,11 @@ impl CosmosRustBotValue {
     }
     pub fn value(&self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
-    }
+    } // todo: make this a trait.
     pub fn from(value: Vec<u8>) -> CosmosRustBotValue {
         bincode::deserialize(&value[..]).unwrap()
-    }
-    pub fn try_get(&self, field: &str) -> Option<serde_json::Value> {
+    } // todo: make this a trait.
+    pub fn try_get(&self, field: &str) -> Option<serde_json::Value> { // todo: make this a trait.
         match self {
             CosmosRustBotValue::Entry(entry) => match entry {
                 Entry::Value(val) => match field {

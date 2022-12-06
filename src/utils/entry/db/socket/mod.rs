@@ -1,77 +1,70 @@
 use anyhow::Context;
+use std::collections::HashSet;
+use std::os::unix::net::{UnixListener,UnixStream};
 use std::io::{Read, Write};
-use std::os::unix::net::UnixStream;
+use std::thread::JoinHandle;
+use serde::{Deserialize, Serialize};
 
-use crate::utils::entry::CosmosRustServerValue;
-
-pub fn encode_request(request: serde_json::Value) -> anyhow::Result<Vec<u8>> {
-    Ok(request.to_string().as_bytes().to_vec())
-    // &bincode::serialize(&serde_json::json!(return_msg)).unwrap()
+pub trait Handler
+{
+    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>>;
 }
 
-pub fn get_decoded_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Vec<u8>> {
-    let mut encoded: Vec<u8> = Vec::new();
+pub fn spawn_socket_service(socket_path: &str, handler: Box<dyn Handler + Send>) -> JoinHandle<()>
+{
+    let socket_path = socket_path.to_owned();
+    std::thread::spawn(move || {
+        loop {
+            if std::fs::metadata(&socket_path).is_ok() {
+                //println!("A socket is already present. Deleting...");
+                std::fs::remove_file(&socket_path)
+                    .with_context(|| {
+                        format!("could not delete previous socket at {:?}", &socket_path)
+                    })
+                    .unwrap();
+            }
+
+            let unix_listener = UnixListener::bind(&socket_path)
+                .context("Could not create the unix socket")
+                .unwrap();
+
+            loop {
+                let (unix_stream, _socket_address) = unix_listener
+                    .accept()
+                    .context("Failed at accepting a connection on the unix listener")
+                    .unwrap();
+
+                handle_stream(unix_stream, &handler).unwrap();
+            }
+        }
+    })
+}
+
+fn handle_stream(mut unix_stream: UnixStream, handler: &Box<dyn Handler + Send>) -> anyhow::Result<()>
+{
+    let encoded: Vec<u8> = handler.process(get_bytes_from_stream(&mut unix_stream)?)?;
+
     unix_stream
-        .read_to_end(&mut encoded)
-        .context("Failed at reading the unix stream")?;
-
-    Ok(encoded)
-}
-pub fn get_result_decoded_from_stream(
-    unix_stream: &mut UnixStream,
-) -> anyhow::Result<CosmosRustServerValue> {
-    let mut encoded: Vec<u8> = Vec::new();
-    unix_stream
-        .read_to_end(&mut encoded)
-        .context("Failed at reading the unix stream")?;
-
-    let decoded = CosmosRustServerValue::from(encoded);
-    Ok(decoded)
-}
-
-pub fn client_send_request(
-    socket_path: &str,
-    request: Vec<u8>,
-) -> anyhow::Result<CosmosRustServerValue> {
-    //let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
-    let mut unix_stream = UnixStream::connect(socket_path).context("Could not create stream")?;
-
-    write_request_and_shutdown(&mut unix_stream, request)?;
-    read_result_from_stream(&mut unix_stream)
-}
-
-pub fn client_send_result_request(
-    socket_path: &str,
-    request: CosmosRustServerValue,
-) -> anyhow::Result<Vec<u8>> {
-    //let socket_path = "/tmp/cosmos_rust_bot_notification_socket";
-    let mut unix_stream = UnixStream::connect(socket_path).context("Could not create stream")?;
-
-    write_result_request_and_shutdown(&mut unix_stream, request)?;
-    read_from_stream(&mut unix_stream)
-}
-fn write_result_request_and_shutdown(
-    unix_stream: &mut UnixStream,
-    request: CosmosRustServerValue,
-) -> anyhow::Result<()> {
-    unix_stream
-        .write(&request.value()[..])
+        .write(&encoded[..])
         .context("Failed at writing onto the unix stream")?;
-
-    //println!("We sent a request");
-    //println!("Shutting down writing on the stream, waiting for response...");
-
-    unix_stream
-        .shutdown(std::net::Shutdown::Write)
-        .context("Could not shutdown writing on the stream")?;
 
     Ok(())
 }
 
-fn read_result_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<CosmosRustServerValue> {
-    let decoded = get_result_decoded_from_stream(unix_stream)?;
-    //println!("We received this response: {:?}", decoded);
-    Ok(decoded)
+pub fn client_send_request<T,S>(
+    socket_path: &str,
+    request: T,
+) -> anyhow::Result<S>
+    where
+        T: Serialize,
+        Vec<u8>: TryFrom<T>,
+        S: for<'a> Deserialize<'a> + TryFrom<Vec<u8>>,
+
+{
+    let mut unix_stream = UnixStream::connect(socket_path).context("Could not create stream")?;
+
+    write_request_and_shutdown(&mut unix_stream, request.try_into().map_err(|_| anyhow::anyhow!("try_into() failed"))?)?;
+    Ok(get_bytes_from_stream(&mut unix_stream)?.try_into().map_err(|_| anyhow::anyhow!("try_into() failed"))?)
 }
 
 fn write_request_and_shutdown(
@@ -82,18 +75,16 @@ fn write_request_and_shutdown(
         .write(&request)
         .context("Failed at writing onto the unix stream")?;
 
-    //println!("We sent a request");
-    //println!("Shutting down writing on the stream, waiting for response...");
-
     unix_stream
         .shutdown(std::net::Shutdown::Write)
         .context("Could not shutdown writing on the stream")?;
-
     Ok(())
 }
 
-fn read_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Vec<u8>> {
-    let decoded = get_decoded_from_stream(unix_stream)?;
-    //println!("We received this response: {:?}", decoded);
-    Ok(decoded)
+fn get_bytes_from_stream(unix_stream: &mut UnixStream) -> anyhow::Result<Vec<u8>> {
+    let mut bytes: Vec<u8> = Vec::new();
+    unix_stream
+        .read_to_end(&mut bytes)
+        .context("Failed at reading the unix stream")?;
+    Ok(bytes)
 }
