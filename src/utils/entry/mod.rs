@@ -493,6 +493,20 @@ pub enum CosmosRustBotValue {
     Subscription(Subscription),
 }
 
+impl TryFrom<Vec<u8>> for CosmosRustBotValue {
+    type Error = anyhow::Error;
+    fn try_from(item: Vec<u8>) -> anyhow::Result<Self> {
+        Ok(bincode::deserialize(&item[..])?)
+    }
+}
+
+impl TryFrom<CosmosRustBotValue> for Vec<u8> {
+    type Error = anyhow::Error;
+    fn try_from(item: CosmosRustBotValue) -> anyhow::Result<Self> {
+        Ok(bincode::serialize(&item)?)
+    }
+}
+
 impl CosmosRustBotValue {
     pub fn key(&self) -> Vec<u8> { // todo: make this a trait.
         match self {
@@ -501,12 +515,6 @@ impl CosmosRustBotValue {
             CosmosRustBotValue::Subscription(sub) => sub.get_key(),
         }
     }
-    pub fn value(&self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    } // todo: make this a trait.
-    pub fn from(value: Vec<u8>) -> CosmosRustBotValue {
-        bincode::deserialize(&value[..]).unwrap()
-    } // todo: make this a trait.
     pub fn try_get(&self, field: &str) -> Option<serde_json::Value> { // todo: make this a trait.
         match self {
             CosmosRustBotValue::Entry(entry) => match entry {

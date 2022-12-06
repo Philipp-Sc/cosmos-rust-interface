@@ -249,20 +249,20 @@ impl CosmosRustBotStore {
     }
 
     pub fn update_items(&mut self, mut items: Vec<CosmosRustBotValue>) {
-        let mut batch = sled::Batch::default();
 
-        self.entry_store.remove_outdated_entries(&items,&mut batch);
-        self.index_store.remove_outdated_indices(&items,&mut batch);
+        self.entry_store.remove_entries_not_in_items(&items); // outdated entries/indices
+        self.index_store.remove_indices_not_in_items(&items);
 
-        self.entry_store.retain_items_not_in_entry_store(&mut items);
-        self.index_store.retain_items_not_in_index_store(&mut items);
-
-        for x in 0..items.len() {
-            batch.insert(sled::IVec::from(items[x].key()), items[x].value());
+        for item in &items {
+            let key =item.key();
+            let value: Vec<u8> = item.clone().try_into().unwrap();
+            if let Ok(false) = self.sled_store.contains_key(&key) {  // insert only updated entries/indices
+                self.sled_store.insert(&key, value).ok();
+            }
         }
-        self.subscription_store.update_subscriptions_if_content_modified(&items,&mut batch);
 
-        self.sled_store.get_tree().apply_batch(batch).unwrap();
+        self.subscription_store.update_subscriptions_if_content_modified(&items);
+
     }
 }
 
@@ -276,12 +276,13 @@ impl IndexStore {
         IndexStore(sled_store)
     }
 
-    pub fn get_indices(&self) -> Vec<Index> {
+    pub fn get_indices(&self) -> impl Iterator<Item = CosmosRustBotValue> {
         self.0.db.scan_prefix(Index::get_prefix()).filter_map(|item| match item {
             Ok((_k, v)) => {
-                match CosmosRustBotValue::from(v.to_vec()) {
-                    CosmosRustBotValue::Index(index) => {
-                        Some(index)
+                let maybe_index = v.to_vec().try_into().unwrap();
+                match maybe_index {
+                    CosmosRustBotValue::Index(_) => {
+                        Some(maybe_index)
                     },
                     _ => {None}
                 }
@@ -289,10 +290,10 @@ impl IndexStore {
             Err(_e) => {
                 None
             }
-        }).collect::<Vec<Index>>()
+        })
     }
 
-    pub fn remove_outdated_indices(&mut self, items: &Vec<CosmosRustBotValue>, batch: &mut sled::Batch) {
+    pub fn remove_indices_not_in_items(&mut self, items: &Vec<CosmosRustBotValue>) {
 
         let item_keys = items
             .iter()
@@ -300,20 +301,11 @@ impl IndexStore {
             .collect::<Vec<Vec<u8>>>();
 
         for index in self.get_indices() {
-            let key = CosmosRustBotValue::Index(index).key();
+            let key = index.key();
             if !item_keys.contains(&key) {
-                batch.remove(key);
+                self.0.db.remove(key).ok();
             }
         }
-    }
-
-    pub fn retain_items_not_in_index_store(&self, items: &mut Vec<CosmosRustBotValue>) {
-        let index_keys = self.get_indices()
-            .into_iter()
-            .map(|x| CosmosRustBotValue::Index(x).key())
-            .collect::<Vec<Vec<u8>>>();
-
-        items.retain(|x| !index_keys.contains(&x.key()));
     }
 
     pub fn register_subscriber(&mut self) -> anyhow::Result<()> {
@@ -332,12 +324,13 @@ impl EntryStore {
         EntryStore(sled_store)
     }
 
-    pub fn get_entries(&self) -> Vec<Entry> {
+    pub fn get_entries(&self) -> impl Iterator<Item = CosmosRustBotValue> {
         self.0.db.scan_prefix(Entry::get_prefix()).filter_map(|item| match item {
             Ok((_k, v)) => {
-                match CosmosRustBotValue::from(v.to_vec()) {
-                    CosmosRustBotValue::Entry(entry) => {
-                        Some(entry)
+                let maybe_entry = v.to_vec().try_into().unwrap();
+                match maybe_entry {
+                    CosmosRustBotValue::Entry(_) => {
+                        Some(maybe_entry)
                     },
                     _ => {None}
                 }
@@ -345,10 +338,10 @@ impl EntryStore {
             Err(_e) => {
                 None
             }
-        }).collect::<Vec<Entry>>()
+        })
     }
 
-    pub fn remove_outdated_entries(&mut self, items: &Vec<CosmosRustBotValue>, batch: &mut sled::Batch) {
+    pub fn remove_entries_not_in_items(&mut self, items: &Vec<CosmosRustBotValue>) {
 
         let item_keys = items
             .iter()
@@ -356,20 +349,11 @@ impl EntryStore {
             .collect::<Vec<Vec<u8>>>();
 
         for entry in self.get_entries() {
-            let key = CosmosRustBotValue::Entry(entry).key();
+            let key = entry.key();
             if !item_keys.contains(&key) {
-                batch.remove(key);
+                self.0.db.remove(key).ok();
             }
         }
-    }
-
-    pub fn retain_items_not_in_entry_store(&self, items: &mut Vec<CosmosRustBotValue>) {
-        let index_keys = self.get_entries()
-            .into_iter()
-            .map(|x| CosmosRustBotValue::Entry(x).key())
-            .collect::<Vec<Vec<u8>>>();
-
-        items.retain(|x| !index_keys.contains(&x.key()));
     }
 
     pub fn register_subscriber(&mut self) -> anyhow::Result<()> {
@@ -388,10 +372,10 @@ impl SubscriptionStore {
         SubscriptionStore(sled_store)
     }
 
-    pub fn get_subscriptions(&self) -> Vec<Subscription> {
+    pub fn get_subscriptions(&self) -> impl Iterator<Item = Subscription> {
         self.0.db.scan_prefix(Subscription::get_prefix()).filter_map(|item| match item {
             Ok((_k, v)) => {
-                match CosmosRustBotValue::from(v.to_vec()) {
+                match v.to_vec().try_into().unwrap() {
                     CosmosRustBotValue::Subscription(sub) => {
                         Some(sub)
                     },
@@ -401,7 +385,7 @@ impl SubscriptionStore {
             Err(_e) => {
                 None
             }
-        }).collect::<Vec<Subscription>>()
+        })
     }
 
     pub fn get_next_updated_subscription(&mut self) -> Option<anyhow::Result<Subscription>> {
@@ -410,7 +394,7 @@ impl SubscriptionStore {
                 Some(Err(anyhow::anyhow!("Error: Remove Event.")))
             },
             Some(sled::Event::Insert { key, value }) => {
-                match CosmosRustBotValue::from(value.to_vec()){
+                match value.to_vec().try_into().unwrap() {
                     CosmosRustBotValue::Subscription(s) => {
                         Some(Ok(s))
                     },
@@ -422,12 +406,14 @@ impl SubscriptionStore {
             _ => { None }
         }
     }
-    pub fn update_subscriptions_if_content_modified(&self, entries: &Vec<CosmosRustBotValue>, batch: &mut sled::Batch) {
+    pub fn update_subscriptions_if_content_modified(&self, entries: &Vec<CosmosRustBotValue>) {
         // refreshing subscriptions by updating them if their content changed.
         for mut subscription in self.get_subscriptions() {
             if let Ok(_) = update_subscription(entries, &mut subscription){
                 let item = CosmosRustBotValue::Subscription(subscription);
-                batch.insert(item.key(),item.value());
+                let key = item.key();
+                let value: Vec<u8> = item.try_into().unwrap();
+                self.0.insert(&key, value).ok();
             }
         }
     }

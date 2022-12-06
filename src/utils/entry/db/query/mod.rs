@@ -16,7 +16,7 @@ impl DatabaseVariant<'_> {
                 let mut result: Vec<Index> = Vec::new();
                 let mut iter = db.scan_prefix(&Index::get_prefix()[..]);
                 while let Some(Ok(item)) = iter.next() {
-                    match CosmosRustBotValue::from(item.1.to_vec()) {
+                    match item.1.to_vec().try_into().unwrap(){
                         CosmosRustBotValue::Index(index) => {
                             result.push(index);
                         },
@@ -34,7 +34,7 @@ impl DatabaseVariant<'_> {
     {
         return match &self {
             DatabaseVariant::Sled(db) => {
-                db.get(key).map(|x| x.map(|y| CosmosRustBotValue::from(y.to_vec()))).unwrap_or(None)
+                db.get(key).map(|x| x.map(|y| y.to_vec().try_into().unwrap())).unwrap_or(None)
             }
             DatabaseVariant::Vec(vec) => {
                 for item in vec.iter() {
@@ -67,7 +67,7 @@ pub fn query_subscriptions_sled_db(db: &sled::Db, _query_part: &SubscriptionsQue
     if let Some(user_hash) = settings_part.user_hash {
         let mut r = db.scan_prefix(&Subscription::get_prefix()[..]);
         while let Some(Ok(item)) = r.next() {
-            let val = CosmosRustBotValue::from(item.1.to_vec());
+            let val = item.1.to_vec().try_into().unwrap();
             match &val {
                 CosmosRustBotValue::Subscription(subscription) => {
                     let mut new_subscription = subscription.clone();
@@ -75,7 +75,9 @@ pub fn query_subscriptions_sled_db(db: &sled::Db, _query_part: &SubscriptionsQue
                         if settings_part.unsubscribe.unwrap_or(false) {
                             new_subscription.remove_user_hash(user_hash);
                             let new_val = CosmosRustBotValue::Subscription(new_subscription);
-                            db.insert(new_val.key(), new_val.value()).ok();
+                            let key = new_val.key();
+                            let value: Vec<u8> = new_val.try_into().unwrap();
+                            db.insert(key,value).ok();
                         }
                         res.push(val);
                     }
@@ -211,11 +213,13 @@ pub fn query_subscribe_unsubscribe_sled_db(db: &sled::Db, query_result: &Vec<Cos
         let s_key = Subscription::get_key_for_entries_query(query_part);
         match db.get(&s_key) {
             Ok(Some(s)) => {
-                if let CosmosRustBotValue::Subscription(mut s) = CosmosRustBotValue::from(s.to_vec()) {
+                if let CosmosRustBotValue::Subscription(mut s) = s.to_vec().try_into().unwrap() {
                     if subscribe {
                         if let Some(user_hash) = settings_part.user_hash {
                             s.add_user_hash(user_hash);
-                            db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
+
+                            let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
+                            db.insert(s_key, value)
                                 .ok();
                         }
                     } else if unsubscribe {
@@ -224,7 +228,9 @@ pub fn query_subscribe_unsubscribe_sled_db(db: &sled::Db, query_result: &Vec<Cos
                                 db.remove(&s_key).ok();
                             } else {
                                 s.remove_user_hash(user_hash);
-                                db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
+
+                                let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
+                                db.insert(s_key, value)
                                     .ok();
                             }
                         }
@@ -243,7 +249,9 @@ pub fn query_subscribe_unsubscribe_sled_db(db: &sled::Db, query_result: &Vec<Cos
                         for e in query_result {
                             s.list.push(e.key());
                         }
-                        db.insert(s_key, CosmosRustBotValue::Subscription(s).value())
+
+                        let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
+                        db.insert(s_key, value)
                             .ok();
                     }
                 }
