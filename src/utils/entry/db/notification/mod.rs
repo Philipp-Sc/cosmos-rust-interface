@@ -20,6 +20,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["You have no subscriptions registered.".to_string()],
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -33,6 +34,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                 let notify = CosmosRustServerValue::Notify(Notify {
                                                     timestamp: Utc::now().timestamp(),
                                                     msg: vec![format!("/{}",query_part.message.replace(" ", "_"))],
+                                                    buttons: vec![],
                                                     user_hash,
                                                 });
                                                 db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -51,6 +53,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["Subscribed".to_string()],
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -59,6 +62,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["Unsubscribed".to_string()],
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -67,6 +71,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["Empty".to_string()],
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -78,6 +83,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: vec!["Empty".to_string()],
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -127,6 +133,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             let notify = CosmosRustServerValue::Notify(Notify {
                                 timestamp: Utc::now().timestamp(),
                                 msg: msg.to_owned(),
+                                buttons: vec![],
                                 user_hash,
                             });
                             db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();
@@ -135,6 +142,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 let notify = CosmosRustServerValue::Notify(Notify {
                                     timestamp: Utc::now().timestamp(),
                                     msg: msg.to_owned(),
+                                    buttons: vec![],
                                     user_hash,
                                 });
                                 db.insert(notify.key(), TryInto::<Vec<u8>>::try_into(notify).unwrap()).ok();

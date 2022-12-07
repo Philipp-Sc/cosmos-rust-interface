@@ -302,12 +302,14 @@ impl Notification {
 pub struct Notify {
     pub timestamp: i64,
     pub msg: Vec<String>,
+    pub buttons: Vec<Vec<(String,String)>>,
     pub user_hash: u64,
 }
 impl Notify {
     pub fn calculate_hash(&self) -> u64 {
         let mut s = DefaultHasher::new();
         self.msg.hash(&mut s);
+        self.buttons.hash(&mut s);
         self.timestamp.hash(&mut s);
         self.user_hash.hash(&mut s);
         s.finish()
