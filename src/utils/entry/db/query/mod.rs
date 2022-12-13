@@ -160,36 +160,39 @@ pub fn query_entries_sled_db(database_variant: DatabaseVariant, query_part: &Ent
         if let Some(entry) = item {
             if filter.is_empty() ||
                 filter
-                .iter().fold(false, |or, f| or || f.iter().fold(true, |sum, (k, v)| match entry.try_get(k) {
-                    None => {
-                        //println!("Key: {:?}", k );
-                        false},
-                    Some(val) => {
-                        //println!("{:?}==?{:?}, Key: {:?}",&val, v, k );
-                        if v.as_str() == "any" {
-                            sum
-                        } else if val.is_number() {
-                            // gt, lt, eq,
-                            /*
-                            if v.contains("eq "){
-                                let compare = v.replace("eq ","");
-                                &val.to_string() == &compare && sum
-                            }else if v.contains("lt "){
-                                let compare = v.replace("lt ","");
-                                &val.as_f64().unwrap_or(0f64) < &compare.parse::<f64>().unwrap_or(0f64) && sum
-                            }else if v.contains("gt "){
-                                let compare = v.replace("gt ","");
-                                &val.as_f64().unwrap_or(0f64) > &compare.parse::<f64>().unwrap_or(0f64) && sum
-                            }else {*/
-                                &val.to_string() == v && sum
-                            //}
-                        } else if let Some(s) = val.as_str() {
-                            s == v.as_str() && sum
-                        } else {
+                .iter().fold(false, |or, f| or || f.iter().fold(true, |sum, (k, v)|
+                    {
+                        let val = entry.get(k);
+                        if val == serde_json::Value::Null {
+                            //println!("Key: {:?}", k );
                             false
+                        }else{
+                            //println!("{:?}==?{:?}, Key: {:?}",&val, v, k );
+                            if v.as_str() == "any" {
+                                sum
+                            } else if val.is_number() {
+                                // gt, lt, eq,
+                                /*
+                                if v.contains("eq "){
+                                    let compare = v.replace("eq ","");
+                                    &val.to_string() == &compare && sum
+                                }else if v.contains("lt "){
+                                    let compare = v.replace("lt ","");
+                                    &val.as_f64().unwrap_or(0f64) < &compare.parse::<f64>().unwrap_or(0f64) && sum
+                                }else if v.contains("gt "){
+                                    let compare = v.replace("gt ","");
+                                    &val.as_f64().unwrap_or(0f64) > &compare.parse::<f64>().unwrap_or(0f64) && sum
+                                }else {*/
+                                &val.to_string() == v && sum
+                                //}
+                            } else if let Some(s) = val.as_str() {
+                                s == v.as_str() && sum
+                            } else {
+                                false
+                            }
                         }
                     }
-                }))
+                ))
             {
                 result.push(entry);
             }

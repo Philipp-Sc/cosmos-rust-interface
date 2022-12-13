@@ -20,13 +20,15 @@ pub fn errors(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> V
                     "Error: Entry reserved!" => "reserved",
                     &_ => "error",
                 };
-                view.push(CosmosRustBotValue::Entry(Entry::Error(Error {
+                view.push(CosmosRustBotValue::Entry(Entry::Value(Value {
                     timestamp: timestamp.to_owned(),
                     origin: "task_meta_data_errors".to_string(),
-                    key: key.to_owned(),
-                    value: err.to_string(),
-                    summary: format!("[{}] - {}: {}", kind, key, err.to_string()),
-                    kind: kind.to_owned(),
+                    custom_data: CustomData::Error(Error{
+                        key: key.to_owned(),
+                        value: err.to_string(),
+                        summary: format!("[{}] - {}: {}", kind, key, err.to_string()),
+                        kind: kind.to_owned(),
+                    })
                 })));
             }
         }

@@ -12,11 +12,11 @@ pub async fn get_proposals(blockchain: SupportedBlockchain,status: ProposalStatu
     let mut keys: Vec<String> = Vec::new();
 
     let mut next_key = None;
-    let mut count = 0usize;
+    let mut count = 1usize;
 
     loop {
 
-        let key1 = format!("{}_{}", count, key);
+        let key1 = format!("page_{}_{}", count, key);
 
         let res = get_gov_proposals(blockchain.clone(), status.clone(), next_key.clone()).await?;
 
@@ -31,10 +31,11 @@ pub async fn get_proposals(blockchain: SupportedBlockchain,status: ProposalStatu
         keys.push(key1);
 
         if let Some(ref new_next_key) = next_key {
-            if new_next_key.is_empty() {
+            if new_next_key.is_empty() { // vec![]
                 break;
             }
-        }else{
+            // continue with valid pagination response for next key.
+        }else{ // no pagination response | no next key
             break;
         }
         count += 1;

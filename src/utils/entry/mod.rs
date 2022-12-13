@@ -64,127 +64,218 @@ impl Display for MaybeError {
     }
 }
 
+#[derive(Serialize,Deserialize,Debug, Clone,Hash,PartialEq)]
+pub enum CustomData {
+    MetaData(MetaData),
+    ProposalData(ProposalData),
+    Debug(Debug),
+    Error(Error),
+    Log(Log)
+}
+
+impl CustomData {
+    fn get(&self, field: &str) -> serde_json::Value {
+        match &self {
+            CustomData::ProposalData(o) => {
+                o.get(field)
+            },
+            CustomData::MetaData(o) => {
+                o.get(field)
+            }
+            CustomData::Debug(o) => {
+                o.get(field)
+            }
+            CustomData::Error(o) => {
+                o.get(field)
+            }
+            CustomData::Log(o) => {
+                o.get(field)
+            }
+        }
+    }
+    fn default_display(&self) -> String {
+        match &self {
+            CustomData::ProposalData(o) => {
+                o.proposal_clickbait.to_owned()
+            },
+            CustomData::MetaData(o) => {
+                o.summary.to_owned()
+            }
+            CustomData::Debug(o) => {
+                format!("{:?}",(&o.key,&o.value))
+            }
+            CustomData::Error(o) => {
+                o.summary.to_owned()
+            }
+            CustomData::Log(o) => {
+                o.summary.to_owned()
+            }
+        }
+    }
+    fn status_display(&self) -> String {
+        match &self {
+            CustomData::ProposalData(o) => {
+                o.proposal_state.to_owned()
+            },
+            _ => {
+                "Error: Can not display status for self.".to_string()
+            }
+        }
+    }
+    fn summary_display(&self) -> String {
+        match &self {
+            CustomData::ProposalData(o) => {
+                o.proposal_quick_summary.to_owned()
+            },
+            _ => {
+                "Error: Can not display summary for self.".to_string()
+            }
+        }
+    }
+    fn content_display(&self) -> String {
+        match &self {
+            CustomData::ProposalData(o) => {
+                o.proposal_content.to_owned()
+            },
+            _ => {
+                "Error: Can not display content for self.".to_string()
+            }
+        }
+    }
+    fn display(&self, display: &str) -> String {
+        match display {
+            "default" => self.default_display(),
+            "status" => self.status_display(),
+            "summary" => self.summary_display(),
+            "content" => self.content_display(),
+            _ => self.default_display(),
+        }
+    }
+
+    fn command(&self, display: &str) -> Option<String> {
+        match &self {
+            CustomData::ProposalData(o) => {
+                match display {
+                    "status" => {
+                        Some(format!("gov prpsl status {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
+                    }
+                    "summary" => {
+                        Some(format!("gov prpsl summary {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
+                    }
+                    "content" => {
+                        Some(format!("gov prpsl content {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
+                    }
+                    _ => {
+                        None
+                    }
+                }
+            },
+            _ => {
+                None
+            }
+        }
+    }
+    fn view_in_browser(&self) -> Option<String> {
+        match &self {
+            CustomData::ProposalData(o) => {
+                Some(o.proposal_link.to_owned())
+            },
+            _ => {
+                None
+            }
+        }
+    }
+}
+
+trait GetField {
+    fn get(&self, field_name: &str) -> serde_json::Value where Self: serde::Serialize {
+        match serde_json::to_value(&self).unwrap().get(field_name) {
+            Some(value) => value.clone(),
+            None => serde_json::Value::Null,
+        }
+    }
+}
+
+#[derive(Serialize,Deserialize,Debug, Clone,Hash,PartialEq)]
+pub struct ProposalData {
+    pub proposal_link: String,
+    pub proposal_clickbait: String,
+    pub proposal_details: String,
+    pub proposal_blockchain: String,
+    pub proposal_status: String,
+    pub proposal_id: Option<u64>,
+    pub proposal_type: Option<String>,
+    pub proposal_SubmitTime: Option<i64>,
+    pub proposal_DepositEndTime: Option<i64>,
+    pub proposal_VotingStartTime: Option<i64>,
+    pub proposal_VotingEndTime: Option<i64>,
+    pub proposal_LatestTime: Option<i64>,
+    pub proposal_custom_display: String,
+    pub proposal_title: String,
+    pub proposal_description: String,
+    pub proposal_vetoed: bool,
+    pub proposal_quick_summary: String,
+    pub proposal_content: String,
+    pub proposal_state: String,
+}
+
+impl GetField for ProposalData {}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct MetaData {
+    pub index: i32,
+    pub kind: String,
+    pub state: String,
+    pub value: String,
+    pub summary: String,
+}
+
+impl GetField for MetaData {}
+
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct Debug {
+    pub key: String,
+    pub value: String,
+}
+
+impl GetField for Debug {}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct Error {
+    pub key: String,
+    pub value: String,
+    pub summary: String,
+    pub kind: String,
+}
+
+impl GetField for Error {}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct Log {
+    pub key: String,
+    pub value: String,
+    pub summary: String,
+}
+impl GetField for Log {}
+
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Value {
     pub timestamp: i64,
     pub origin: String,
-    pub summary: String,
-    pub custom_data: String,
-    //..
-}
-impl Value {
-    pub fn new(
-        timestamp: i64,
-        origin: String,
-        summary: String,
-        custom_data: serde_json::Value,
-    ) -> Value {
-        Value {
-            timestamp: timestamp,
-            origin: origin,
-            summary: summary,
-            custom_data: custom_data.to_string(),
-        }
-    }
-    pub fn custom_data(&self) -> serde_json::Value {
-        serde_json::from_str(&self.custom_data.as_str()).unwrap()
-    }
+    pub custom_data: CustomData,
 }
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
         //self.timestamp.hash(state);
         self.origin.hash(state);
-        self.summary.hash(state);
-        self.custom_data.to_string().hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct MetaData {
-    pub index: i32,
-    pub timestamp: i64,
-    pub origin: String,
-    pub kind: String,
-    pub state: String,
-    pub value: String,
-    pub summary: String,
-    //..
-}
-impl Hash for MetaData {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        //self.timestamp.hash(state);
-        self.index.hash(state);
-        self.origin.hash(state);
-        self.kind.hash(state);
-        self.state.hash(state);
-        self.value.hash(state);
-        self.summary.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Debug {
-    pub timestamp: i64,
-    pub origin: String,
-    pub key: String,
-    pub value: String,
-    //..
-}
-impl Hash for Debug {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        //self.timestamp.hash(state);
-        self.origin.hash(state);
-        self.key.hash(state);
-        self.value.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Error {
-    pub timestamp: i64,
-    pub origin: String,
-    pub key: String,
-    pub value: String,
-    pub summary: String,
-    pub kind: String,
-    //..
-}
-impl Hash for Error {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        //self.timestamp.hash(state);
-        self.origin.hash(state);
-        self.key.hash(state);
-        self.value.hash(state);
-        self.summary.hash(state);
-        self.kind.hash(state);
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Log {
-    pub timestamp: i64,
-    pub origin: String,
-    pub key: String,
-    pub value: String,
-    pub summary: String,
-    //..
-}
-impl Hash for Log {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        //self.timestamp.hash(state);
-        self.origin.hash(state);
-        self.key.hash(state);
-        self.value.hash(state);
-        self.summary.hash(state);
+        self.custom_data.hash(state);
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
 pub enum Entry {
-    MetaData(MetaData),
-    Debug(Debug),
-    Error(Error),
-    Log(Log),
     Value(Value),
 }
 
@@ -302,7 +393,7 @@ impl Notification {
 pub struct Notify {
     pub timestamp: i64,
     pub msg: Vec<String>,
-    pub buttons: Vec<Vec<(String,String)>>,
+    pub buttons: Vec<Vec<Vec<(String,String)>>>,
     pub user_hash: u64,
 }
 impl Notify {
@@ -381,7 +472,7 @@ impl Hash for QueryPart {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EntriesQueryPart {
     pub message: String,
-    pub fields: Vec<String>,
+    pub display: String,
     pub indices: Vec<String>,
     pub filter: Vec<Vec<(String, String)>>,
     pub order_by: String,
@@ -390,7 +481,7 @@ pub struct EntriesQueryPart {
 impl Hash for EntriesQueryPart {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.message.hash(state);
-        self.fields.hash(state);
+        self.display.hash(state);
         self.indices.hash(state);
         /*
         let mut key_value_vector: Vec<String> = self.filter.iter().flatten().enumerate().map(|(i,x)| format!("{},{},{}",i,x.0,x.1)).collect();
@@ -510,63 +601,32 @@ impl TryFrom<CosmosRustBotValue> for Vec<u8> {
 }
 
 impl CosmosRustBotValue {
-    pub fn key(&self) -> Vec<u8> { // todo: make this a trait.
+    pub fn key(&self) -> Vec<u8> {
         match self {
             CosmosRustBotValue::Entry(entry) => entry.get_key(),
             CosmosRustBotValue::Index(index) => index.get_key(),
             CosmosRustBotValue::Subscription(sub) => sub.get_key(),
         }
     }
-    pub fn try_get(&self, field: &str) -> Option<serde_json::Value> { // todo: make this a trait.
+    pub fn get(&self, field: &str) -> serde_json::Value {
         match self {
             CosmosRustBotValue::Entry(entry) => match entry {
                 Entry::Value(val) => match field {
-                    "timestamp" => Some(serde_json::json!(val.timestamp)),
-                    "origin" => Some(serde_json::json!(val.origin)),
-                    "summary" => Some(serde_json::json!(val.summary)),
-                    &_ => val.custom_data().get(field).map(|x| x.clone()),
-                },
-                Entry::MetaData(val) => match field {
-                    "index" => Some(serde_json::json!(val.index)),
-                    "timestamp" => Some(serde_json::json!(val.timestamp)),
-                    "origin" => Some(serde_json::json!(val.origin)),
-                    "kind" => Some(serde_json::json!(val.kind)),
-                    "state" => Some(serde_json::json!(val.state)),
-                    "value" => Some(serde_json::json!(val.value)),
-                    "summary" => Some(serde_json::json!(val.summary)),
-                    &_ => None,
-                },
-                Entry::Log(val) => match field {
-                    "summary" => Some(serde_json::json!(val.summary)),
-                    "timestamp" => Some(serde_json::json!(val.timestamp)),
-                    "origin" => Some(serde_json::json!(val.origin)),
-                    &_ => None,
-                },
-                Entry::Error(val) => match field {
-                    "summary" => Some(serde_json::json!(val.summary)),
-                    "timestamp" => Some(serde_json::json!(val.timestamp)),
-                    "origin" => Some(serde_json::json!(val.origin)),
-                    "kind" => Some(serde_json::json!(val.kind)),
-                    &_ => None,
-                },
-                Entry::Debug(val) => match field {
-                    "key" => Some(serde_json::json!(val.key)),
-                    "value" => Some(serde_json::json!(val.value)),
-                    "timestamp" => Some(serde_json::json!(val.timestamp)),
-                    "origin" => Some(serde_json::json!(val.origin)),
-                    &_ => None,
+                    "timestamp" => serde_json::json!(val.timestamp),
+                    "origin" => serde_json::json!(val.origin),
+                    &_ => val.custom_data.get(field),
                 },
             },
             CosmosRustBotValue::Index(val) => match field {
-                "name" => Some(serde_json::json!(val.name)),
-                "list" => Some(serde_json::json!(val.list)),
-                &_ => None,
+                "name" => serde_json::json!(val.name),
+                "list" => serde_json::json!(val.list),
+                &_ => serde_json::Value::Null,
             },
             CosmosRustBotValue::Subscription(val) => match field {
-                "query" => Some(serde_json::json!(val.query)),
-                "user_list" => Some(serde_json::json!(val.user_list)),
-                "list" => Some(serde_json::json!(val.list)),
-                &_ => None,
+                "query" => serde_json::json!(val.query),
+                "user_list" => serde_json::json!(val.user_list),
+                "list" => serde_json::json!(val.list),
+                &_ => serde_json::Value::Null,
             },
         }
     }
@@ -574,17 +634,26 @@ impl CosmosRustBotValue {
         for field in fields {
             let variants = view
                 .iter()
-                .filter(|x| x.try_get(field).is_some())
-                .map(|x| x.try_get(field).unwrap().as_str().unwrap().to_string())
+                .filter_map(|x| {
+                    let val = x.get(field);
+                    if val != serde_json::Value::Null{
+                        return Some(val.as_str().unwrap().to_string());
+                    }
+                    return None;
+                })
                 .collect::<HashSet<String>>();
             for variant in variants {
                 let entries = view
                     .iter()
-                    .filter(|x| match x.try_get(field) {
-                        Some(t) => t.as_str().unwrap() == variant,
-                        None => false,
+                    .filter_map(|x| {
+                        let val = x.get(field);
+                        if val != serde_json::Value::Null{
+                            if val.as_str().unwrap() == variant{
+                                return Some(x.clone());
+                            }
+                        }
+                        return None;
                     })
-                    .map(|x| x.clone())
                     .collect::<Vec<CosmosRustBotValue>>();
                 let membership = CosmosRustBotValue::create_membership(
                     &entries,
@@ -606,15 +675,14 @@ impl CosmosRustBotValue {
     ) -> Index {
         let have_field = entries
             .iter()
-            .map(|x| {
+            .filter_map(|x| {
                 if let Some(f) = field {
-                    (x.key(), x.try_get(f))
-                } else {
-                    (x.key(), Some(serde_json::Value::Null))
+                    if x.get(f) != serde_json::Value::Null {
+                        return Some(x.key());
+                    }
                 }
+                return None;
             })
-            .filter(|(_, x)| x.is_some())
-            .map(|(key, _)| key)
             .collect::<Vec<Vec<u8>>>();
         Index {
             name: name.to_string(),
@@ -628,9 +696,13 @@ impl CosmosRustBotValue {
     pub fn create_index(entries: &Vec<CosmosRustBotValue>, field: &str, name: &str) -> Index {
         let mut have_field = entries
             .iter()
-            .map(|x| (x.key(), x.try_get(field)))
-            .filter(|(_, x)| x.is_some())
-            .map(|(key, x)| (key, x.unwrap()))
+            .filter_map(|x| {
+                let val = x.get(field);
+                if val != serde_json::Value::Null {
+                    return Some((x.key(),val));
+                }
+                return None;
+            })
             .collect::<Vec<(Vec<u8>, serde_json::Value)>>();
         have_field.sort_by(|(_, first), (_, second)| match (first, second) {
             (serde_json::Value::String(f), serde_json::Value::String(s)) => {

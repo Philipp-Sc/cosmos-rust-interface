@@ -119,13 +119,22 @@ impl TaskMemoryStore {
         value
     }
 
-    pub fn get_index_of_ok_result(&self, key: &str, index: u64) -> anyhow::Result<u64>
+    pub fn get_index_of_ok_result<T>(&self, key: &str, index: u64) -> anyhow::Result<u64>
+        where
+            T: for<'a> Deserialize<'a> + Serialize
     {
         for i in (0..=index).rev() {
             let key = format!("key_{}_rev_{}", key, i);
             let item: Option<IVec> = self.0.get(key.as_bytes().to_vec())?;
-            if item.is_some(){
-                return Ok(i);
+            match item {
+                Some(val) => {
+                    let tmp: Maybe<T> = val.to_vec().try_into()?;
+                    if let Maybe{ data: Ok(_),.. } = tmp {
+                        return Ok(i);
+                    }
+                },
+                None => {
+                },
             }
         }
         Err(anyhow::anyhow!("Error: no index found for key {}",key))
@@ -144,10 +153,12 @@ impl TaskMemoryStore {
     }
 
     // removes all historic entries, starting from (exclusive) the last ok result
-    pub fn remove_historic_entries(&self, key: &str, index: u64) -> anyhow::Result<()> {
-
-        info!("remove_historic_entries: key: {}, index: {}", key, index);
-        let smallest_required_index = self.get_index_of_ok_result(key, index).unwrap_or(index);
+    pub fn remove_historic_entries<T>(&self, key: &str, max_index: u64) -> anyhow::Result<()>
+        where
+            T: for<'a> Deserialize<'a> + Serialize
+    {
+        info!("remove_historic_entries: key: {}, max_index: {}", key, max_index);
+        let smallest_required_index = self.get_index_of_ok_result::<T>(key, max_index).unwrap_or(max_index);
         for i in (0..smallest_required_index).rev() {
             if self.0.remove(format!("key_{}_rev_{}",&key,i).as_bytes().to_vec())?.is_none(){
                 info!("key does not exist: key: {}, index: {}", key, i);
@@ -165,7 +176,7 @@ impl TaskMemoryStore {
     // called in async/parallel from multiple threads
     pub fn push<T>(&self, key: &str, value: Maybe<T>) -> anyhow::Result<()>
         where
-            T: Serialize
+            T: for<'a> Deserialize<'a> + Serialize
     {
         info!("push key: key: {}", key);
         debug!("push key: value: {}", serde_json::to_string_pretty(&value).unwrap_or("Formatting Error".to_string()));
@@ -184,11 +195,11 @@ impl TaskMemoryStore {
                 }
             }
         }
-        self.0.insert(format!("{}{}",REV_INDEX_PREFIX,key).as_bytes().to_vec(),next_index.0.to_be_bytes().to_vec())?;
         let tmp: Vec<u8> = value.try_into()?;
         self.0.insert(format!("key_{}_rev_{}",key,next_index.0).as_bytes().to_vec(),tmp)?;
+        self.0.insert(format!("{}{}",REV_INDEX_PREFIX,key).as_bytes().to_vec(),next_index.0.to_be_bytes().to_vec())?;
 
-        self.remove_historic_entries(key, next_index.0)?;
+        self.remove_historic_entries::<T>(key, next_index.0)?;
         Ok(())
     }
 
@@ -210,7 +221,7 @@ impl TaskMemoryStore {
             T: for<'a> Deserialize<'a> + Serialize
     {
         self.key_iter().map(|key| {
-            return match self.get::<T>(&key,retrieval_method) {
+            match self.get::<T>(&key,retrieval_method) {
                 Ok(val) => { (key, val) },
                 Err(err) => {
                     let error = Err(MaybeError::AnyhowError(format!("Error: Key: {}, Err: {}",&key, err.to_string())));
@@ -220,7 +231,7 @@ impl TaskMemoryStore {
                          timestamp: Utc::now().timestamp(),
                      })
                 },
-            };
+            }
         })
     }
 }

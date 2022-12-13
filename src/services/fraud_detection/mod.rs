@@ -7,6 +7,9 @@ use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassificatio
 use rust_bert_fraud_detection_socket_ipc::ipc::client_send_rust_bert_fraud_detection_request;
 use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 
+
+const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
+
 // TODO: potentially batch multiple requests.
 pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
 
@@ -15,7 +18,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
     let mut counter_classifications = 0usize;
     let mut counter_existing_classifications = 0usize;
 
-    for (key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
+    for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
 
@@ -23,9 +26,9 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
 
                     let hash = each.title_and_description_to_hash();
 
-                    if !task_store.contains_key(&hash.to_string()){
+                    if !task_store.contains_key(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash)){ // TODO: need to check if OK or ERROR
 
-                        let text =  each.custom_display(None);
+                        let text =  each.proposal_details(None);
 
                         info!("client_send_rust_bert_fraud_detection_request");
                         let result: anyhow::Result<RustBertFraudDetectionResult> = client_send_rust_bert_fraud_detection_request("./tmp/rust_bert_fraud_detection_socket",vec![text.clone()]);
@@ -44,7 +47,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                             },
                             timestamp: Utc::now().timestamp(),
                         };
-                        keys.push(hash.to_string());
+                        keys.push(format!("{}_{}",FRAUD_DETECTION_PREFIX,hash));
                         task_store.push(&keys.last().unwrap(),result).ok();
 
                         // progress

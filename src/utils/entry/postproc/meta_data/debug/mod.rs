@@ -11,11 +11,10 @@ pub fn debug(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> Ve
                 data: Ok(resolved),
                 timestamp,
             } => {
-                view.push(CosmosRustBotValue::Entry(Entry::Debug(Debug {
+                view.push(CosmosRustBotValue::Entry(Entry::Value(Value {
                     timestamp: timestamp.to_owned(),
                     origin: "task_meta_data_debug".to_string(),
-                    key: format!("{}", key),
-                    value: format!("{:?}", resolved),
+                    custom_data: CustomData::Debug(Debug{ key: format!("{}", key), value: format!("{:?}", resolved) })
                 })));
             }
             Maybe { data: Err(_), .. } => {}
