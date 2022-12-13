@@ -73,14 +73,14 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         proposal_vetoed: proposal.proposal().map(|x| x.final_tally_result.map(|y| y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.yes.parse::<f64>().unwrap_or(0f64) && y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.no.parse::<f64>().unwrap_or(0f64))).flatten().unwrap_or(false)
                 };
 
-                //if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
+                if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
                     view.push(
                         CosmosRustBotValue::Entry(Entry::Value(Value {
                             timestamp: timestamp.to_owned(),
                             origin: origin.to_owned(),
                             custom_data: CustomData::ProposalData(data)
                         })));
-                //}
+                }
 
 
                 // proposals_for_csv.push(data);
