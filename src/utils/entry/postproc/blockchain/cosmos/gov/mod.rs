@@ -42,7 +42,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
             for (mut proposal,origin,timestamp) in gov_proposals.into_iter().map(|x| (x, key.to_string(), timestamp.to_owned())) {
 
-                let fraud_classification = match task_store.get::<ResponseResult>(&proposal.title_and_description_to_hash().to_string(),&RetrievalMethod::GetOk){
+                let fraud_classification = match task_store.get::<ResponseResult>(&format!("FRAUD_DETECTION_{}",proposal.title_and_description_to_hash()),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, text, fraud_prediction })), timestamp }) => {
                         Some(fraud_prediction)
                     }
