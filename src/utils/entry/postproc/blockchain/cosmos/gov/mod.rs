@@ -4,9 +4,11 @@ use crate::utils::entry::*;
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
-use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification};
+use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result};
 
 use serde::{Deserialize,Serialize};
+use crate::services::fraud_detection::FRAUD_DETECTION_PREFIX;
+use crate::services::gpt3::GPT3_PREFIX;
 
 
 /// # Governance Proposal Notifications
@@ -42,9 +44,19 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
             for (mut proposal,origin,timestamp) in gov_proposals.into_iter().map(|x| (x, key.to_string(), timestamp.to_owned())) {
 
-                let fraud_classification = match task_store.get::<ResponseResult>(&format!("FRAUD_DETECTION_{}",proposal.title_and_description_to_hash()),&RetrievalMethod::GetOk){
+                let hash = proposal.title_and_description_to_hash();
+
+                let fraud_classification = match task_store.get::<ResponseResult>(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, text, fraud_prediction })), timestamp }) => {
                         Some(fraud_prediction)
+                    }
+                    Err(_) => {None}
+                    _ => {None}
+                };
+
+                let gpt3_result = match task_store.get::<ResponseResult>(&format!("{}_{}",GPT3_PREFIX,hash),&RetrievalMethod::GetOk){
+                    Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result{ text, prompt, result })), timestamp }) => {
+                        Some(result)
                     }
                     Err(_) => {None}
                     _ => {None}
@@ -54,7 +66,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                 let data =  ProposalData {
                         proposal_link: proposal.governance_proposal_link(),
                         proposal_clickbait: proposal.proposal_clickbait(fraud_classification),
-                        proposal_quick_summary: format!("Coming soon"),
+                        proposal_quick_summary: format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string())),
                         proposal_content: proposal.proposal_content(),
                         proposal_state: proposal.proposal_state(),
                         proposal_details: proposal.proposal_details(fraud_classification),

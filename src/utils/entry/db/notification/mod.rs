@@ -80,33 +80,38 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                         let mut navigation = Vec::new();
                                         let mut navigation_row = Vec::new();
+                                        let mut navigation_row2 = Vec::new();
 
                                         if &query_part.display == "default" {
 
                                             if let Some(command) = custom_data.command("status"){
                                                 navigation_row.push(
-                                                    ("Status".to_string(), command),
-                                                );
-                                            }
-
-                                            if let Some(command) = custom_data.command("summary"){
-                                                navigation_row.push(
-                                                    ("Summary".to_string(), command),
+                                                    ("📊 Status".to_string(), command),
                                                 );
                                             }
 
                                             if let Some(command) = custom_data.command("content"){
                                                 navigation_row.push(
-                                                    ("Content".to_string(), command),
+                                                    ("🏛 ️Proposal".to_string(), command),
                                                 );
                                             }
-                                            navigation.push(navigation_row);
 
                                             if let Some(link) = custom_data.view_in_browser() {
-                                                navigation.push(vec![
-                                                    ("View in Browser".to_string(), link),
-                                                ]);
+                                                navigation_row2.push(
+                                                    ("Open in Browser".to_string(), link),
+                                                );
                                             }
+
+                                            if let Some(command) = custom_data.command("summary"){
+                                                navigation_row2.push(
+                                                    ("⚡ Executive Briefing".to_string(), command),
+                                                );
+                                            }
+
+
+
+                                            navigation.push(navigation_row);
+                                            navigation.push(navigation_row2);
 
                                             buttons.push(navigation);
                                         }else if &query_part.display == "status" {

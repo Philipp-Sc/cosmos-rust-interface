@@ -13,6 +13,8 @@ pub enum ResponseResult {
     SmartContracts(SmartContractsQuery),
     FraudClassification(FraudClassification),
     FraudClassificationStatus(FraudClassificationStatus),
+    GPT3Result(GPT3Result),
+    GPT3ResultStatus(GPT3ResultStatus),
     TaskResult(TaskResult),
 }
 
@@ -45,6 +47,19 @@ impl TryFrom<ResponseResult> for Vec<u8> {
         Ok(bincode::serialize(&item)?)
     }
 }*/
+
+
+#[derive(Serialize,Deserialize,Debug, Clone)]
+pub struct GPT3ResultStatus {
+    pub number_of_results: usize,
+}
+
+#[derive(Serialize,Deserialize,Debug, Clone)]
+pub struct GPT3Result {
+    pub text: String,
+    pub prompt: String,
+    pub result: String,
+}
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
 pub struct FraudClassificationStatus {

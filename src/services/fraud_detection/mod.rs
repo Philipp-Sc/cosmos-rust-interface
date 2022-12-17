@@ -8,7 +8,7 @@ use rust_bert_fraud_detection_socket_ipc::ipc::client_send_rust_bert_fraud_detec
 use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 
 
-const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
+pub const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
 
 // TODO: potentially batch multiple requests.
 pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
