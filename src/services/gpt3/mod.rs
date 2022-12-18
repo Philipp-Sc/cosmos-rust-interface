@@ -42,8 +42,8 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 let (title, description) = each.get_title_and_description();
                                 let text = format!("{}/n{}", title, description);
                                 let prompts = [
-                                    "A concise briefing on this governance proposal. Tweet.",
-                                    "Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet."
+                                    "Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet.",
+                                    "Please provide a summary and analysis of a governance proposal using bullet points, including information about the purpose and goals of the proposal, the proposed budget, any risks or drawbacks that should be considered, and any other relevant details. Also, please provide any recommendations or advice for evaluating the proposal using bullet points."
                                 ];
 
                                 for i in 0..prompts.len() {
