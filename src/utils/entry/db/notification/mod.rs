@@ -141,7 +141,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                             if let Some(command) = custom_data.command("briefing1"){
                                                 navigation_row2.push(
-                                                    ("⚡ Continue Briefing".to_string(), command),
+                                                    ("⚡ Continue".to_string(), command),
                                                 );
                                             }
 
