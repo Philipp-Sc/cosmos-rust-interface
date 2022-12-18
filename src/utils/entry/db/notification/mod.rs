@@ -24,7 +24,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
             };
 
             match n.query.query_part {
-                QueryPart::SubscriptionsQueryPart(_query_part) => {
+                QueryPart::SubscriptionsQueryPart(subscription_query_part) => {
                     if let Some(user_hash) = n.query.settings_part.user_hash {
                         if n.entries.is_empty() {
                             insert_notify(db, vec!["You have no subscriptions registered.".to_string()], vec![], user_hash);
@@ -35,8 +35,15 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                         match sub.query {
                                             QueryPart::SubscriptionsQueryPart(_) => {},
                                             QueryPart::EntriesQueryPart(query_part) => {
+
+                                                let action = if subscription_query_part.message.contains("unsubscribe"){
+                                                    "Subscribe".to_string()
+                                                }else{
+                                                    "Unsubscribe".to_string()
+                                                };
+
                                                 let command = format!("/{}",query_part.message.replace(" ", "_"));
-                                                insert_notify(db, vec![command.to_owned()], vec![vec![vec![("Unsubscribe".to_string(),format!("{}_unsubscribe",command))]]], user_hash);
+                                                insert_notify(db, vec![command.to_owned()], vec![vec![vec![(action.to_owned(),format!("{} {}",query_part.message,action.to_lowercase()))]]], user_hash);
                                             },
                                         }
                                     }
@@ -47,21 +54,24 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                     }
                 }
                 QueryPart::EntriesQueryPart(query_part) => {
+
+                    let command = format!("/{}",query_part.message.replace(" ", "_"));
+
                     if let Some(user_hash) = n.query.settings_part.user_hash {
                         if n.query.settings_part.subscribe.unwrap_or(false) {
-                            insert_notify(db, vec!["Subscribed".to_string()], vec![], user_hash);
+                            insert_notify(db, vec![format!("Subscribed\n{}", command)], vec![], user_hash);
                             return;
                         } else if n.query.settings_part.unsubscribe.unwrap_or(false) {
-                            insert_notify(db, vec!["Unsubscribed".to_string()], vec![], user_hash);
+                            insert_notify(db, vec![format!("Unsubscribed\n{}", command)], vec![], user_hash);
                             return;
                         } else if n.entries.is_empty() {
-                            insert_notify(db, vec!["Empty".to_string()], vec![], user_hash);
+                            insert_notify(db, vec![format!("Empty result set\n{}", command)], vec![], user_hash);
                             return;
                         }
                     }
                     if n.entries.is_empty() {
                         for user_hash in n.user_list.into_iter() {
-                            insert_notify(db, vec!["Empty".to_string()], vec![], user_hash);
+                            insert_notify(db, vec![format!("Empty result set\n{}", command)], vec![], user_hash);
                         }
                     } else {
 
@@ -102,9 +112,9 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                 );
                                             }
 
-                                            if let Some(command) = custom_data.command("summary"){
+                                            if let Some(command) = custom_data.command("briefing0"){
                                                 navigation_row2.push(
-                                                    ("⚡ Executive Briefing".to_string(), command),
+                                                    ("⚡ Briefing".to_string(), command),
                                                 );
                                             }
 
@@ -127,13 +137,20 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                             // who voted how?
 
-                                        }else if &query_part.display == "summary" {
+                                        }else if &query_part.display == "briefing0" {
+
+                                            if let Some(command) = custom_data.command("briefing1"){
+                                                navigation_row2.push(
+                                                    ("⚡ Continue Briefing".to_string(), command),
+                                                );
+                                            }
+
+                                            navigation.push(navigation_row2);
+                                            buttons.push(navigation);
 
                                         }else if &query_part.display == "content" {
 
                                         }
-
-
 
 
                                     }else{

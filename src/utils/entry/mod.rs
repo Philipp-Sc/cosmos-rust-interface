@@ -122,10 +122,10 @@ impl CustomData {
             }
         }
     }
-    fn summary_display(&self) -> String {
+    fn briefing_display(&self, index: usize) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_quick_summary.to_owned()
+                o.proposal_briefings[index].to_owned()
             },
             _ => {
                 "Error: Can not display summary for self.".to_string()
@@ -146,29 +146,22 @@ impl CustomData {
         match display {
             "default" => self.default_display(),
             "status" => self.status_display(),
-            "summary" => self.summary_display(),
             "content" => self.content_display(),
-            _ => self.default_display(),
+            _ => {
+                if display.contains("briefing") {
+                    let briefing_index = display["briefing".len()..].to_string().parse::<u8>().unwrap_or(0u8);
+                    self.briefing_display(briefing_index as usize)
+                }else{
+                    self.default_display()
+                }
+            },
         }
     }
 
     fn command(&self, display: &str) -> Option<String> {
         match &self {
             CustomData::ProposalData(o) => {
-                match display {
-                    "status" => {
-                        Some(format!("gov prpsl status {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
-                    }
-                    "summary" => {
-                        Some(format!("gov prpsl summary {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
-                    }
-                    "content" => {
-                        Some(format!("gov prpsl content {} id{}",o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
-                    }
-                    _ => {
-                        None
-                    }
-                }
+                Some(format!("gov prpsl {} {} id{}",display,o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
             },
             _ => {
                 None
@@ -214,7 +207,7 @@ pub struct ProposalData {
     pub proposal_title: String,
     pub proposal_description: String,
     pub proposal_vetoed: bool,
-    pub proposal_quick_summary: String,
+    pub proposal_briefings: Vec<String>,
     pub proposal_content: String,
     pub proposal_state: String,
 }

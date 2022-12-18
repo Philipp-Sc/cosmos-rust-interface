@@ -8,7 +8,12 @@ use rust_bert_fraud_detection_socket_ipc::ipc::client_send_rust_bert_fraud_detec
 use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 
 
-pub const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
+const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
+
+
+pub fn get_key_for_hash(hash: u64) -> String {
+    format!("{}_{}",FRAUD_DETECTION_PREFIX,hash)
+}
 
 // TODO: potentially batch multiple requests.
 pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
@@ -25,8 +30,9 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                 for each in proposals.iter_mut().filter(|x| x.status==ProposalStatus::StatusDepositPeriod || x.status==ProposalStatus::StatusVotingPeriod) {
 
                     let hash = each.title_and_description_to_hash();
+                    let key_for_hash = get_key_for_hash(hash);
 
-                    if !task_store.contains_key(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash)){ // TODO: need to check if OK or ERROR
+                    if !task_store.contains_key(&key_for_hash){ // TODO: need to check if OK or ERROR
 
                         let text =  each.proposal_details(None);
 
@@ -47,7 +53,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                             },
                             timestamp: Utc::now().timestamp(),
                         };
-                        keys.push(format!("{}_{}",FRAUD_DETECTION_PREFIX,hash));
+                        keys.push(key_for_hash);
                         task_store.push(&keys.last().unwrap(),result).ok();
 
                         // progress

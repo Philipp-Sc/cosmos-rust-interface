@@ -7,8 +7,8 @@ use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result};
 
 use serde::{Deserialize,Serialize};
-use crate::services::fraud_detection::FRAUD_DETECTION_PREFIX;
-use crate::services::gpt3::GPT3_PREFIX;
+use crate::services::fraud_detection::get_key_for_hash as fraud_detection_get_key_for_hash;
+use crate::services::gpt3::get_key_for_hash as gpt3_get_key_for_hash;
 
 
 /// # Governance Proposal Notifications
@@ -46,7 +46,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 let hash = proposal.title_and_description_to_hash();
 
-                let fraud_classification = match task_store.get::<ResponseResult>(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash),&RetrievalMethod::GetOk){
+                let fraud_classification = match task_store.get::<ResponseResult>(&fraud_detection_get_key_for_hash(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, text, fraud_prediction })), timestamp }) => {
                         Some(fraud_prediction)
                     }
@@ -54,7 +54,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let gpt3_result = match task_store.get::<ResponseResult>(&format!("{}_{}",GPT3_PREFIX,hash),&RetrievalMethod::GetOk){
+                let gpt3_result_summary = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash,"briefing0"),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result{ text, prompt, result })), timestamp }) => {
                         Some(result)
                     }
@@ -62,11 +62,24 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
+                let gpt3_result_briefing1 = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash,"briefing1"),&RetrievalMethod::GetOk){
+                    Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result{ text, prompt, result })), timestamp }) => {
+                        Some(result)
+                    }
+                    Err(_) => {None}
+                    _ => {None}
+                };
+
+                let briefings = vec![
+                    format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result_summary.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string())),
+                    format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result_briefing1.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()))
+                ];
+
 
                 let data =  ProposalData {
                         proposal_link: proposal.governance_proposal_link(),
                         proposal_clickbait: proposal.proposal_clickbait(fraud_classification),
-                        proposal_quick_summary: format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string())),
+                        proposal_briefings: briefings,
                         proposal_content: proposal.proposal_content(),
                         proposal_state: proposal.proposal_state(),
                         proposal_details: proposal.proposal_details(fraud_classification),

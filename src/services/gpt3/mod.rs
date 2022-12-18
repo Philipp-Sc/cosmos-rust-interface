@@ -6,10 +6,14 @@ use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3Result, GPT3ResultStatus, TaskResult, FraudClassification};
 use rust_openai_gpt_tools_socket_ipc::ipc::client_send_openai_gpt_summarization_request;
 use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTSummarizationResult;
-use crate::services::fraud_detection::FRAUD_DETECTION_PREFIX;
+use crate::services::fraud_detection::get_key_for_hash as fraud_detection_get_key_for_hash;
 
 
-pub const GPT3_PREFIX: &str = "GPT3";
+const GPT3_PREFIX: &str = "GPT3";
+
+pub fn get_key_for_hash(hash: u64, prompt_id: &str) -> String {
+    format!("{}_{}_{}",GPT3_PREFIX, prompt_id, hash)
+}
 
 pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
 
@@ -21,66 +25,48 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-
-                for each in proposals.iter_mut().filter(|x| x.status==ProposalStatus::StatusVotingPeriod) {
-
+                for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
                     let hash = each.title_and_description_to_hash();
+                    let fraud_detection_key_for_hash = fraud_detection_get_key_for_hash(hash);
 
-                    if task_store.contains_key(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash)){
-
-                        let fraud_classification = match task_store.get::<ResponseResult>(&format!("{}_{}",FRAUD_DETECTION_PREFIX,hash),&RetrievalMethod::GetOk){
-                            Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, text, fraud_prediction })), timestamp }) => {
+                    if task_store.contains_key(&fraud_detection_key_for_hash) {
+                        let fraud_classification = match task_store.get::<ResponseResult>(&fraud_detection_key_for_hash, &RetrievalMethod::GetOk) {
+                            Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification { title, description, text, fraud_prediction })), timestamp }) => {
                                 Some(fraud_prediction)
                             }
-                            Err(_) => {None}
-                            _ => {None}
+                            Err(_) => { None }
+                            _ => { None }
                         };
                         if let Some(val) = fraud_classification {
                             if val < 0.7 {
+                                let (title, description) = each.get_title_and_description();
+                                let text = format!("{}/n{}", title, description);
+                                let prompts = [
+                                    "A concise briefing on this governance proposal. Tweet.",
+                                    "Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet."
+                                ];
 
-                                if !task_store.contains_key(&format!("{}_{}",GPT3_PREFIX,hash)){ // TODO: need to check if OK or ERROR
+                                for i in 0..prompts.len() {
+                                    if let Some(inserted_key) = insert_gpt3_result(&task_store, hash, &format!("briefing{}",i), &text, prompts[i]) {
+                                        counter_results += 1usize;
 
-                                    let (title,description) = each.get_title_and_description();
-                                    let text =  format!("{}/n{}",title,description);
-                                    let prompt = "A concise briefing on this governance proposal. Tweet.".to_string();
+                                        // progress
+                                        let result: Maybe<ResponseResult> = Maybe {
+                                            data: Ok(ResponseResult::GPT3ResultStatus(GPT3ResultStatus {
+                                                number_of_results: counter_results + counter_existing_results,
+                                            })),
+                                            timestamp: Utc::now().timestamp(),
+                                        };
+                                        error!("RustBertGPT3Progress: {:?}",result);
 
-                                    error!("client_send_openai_gpt_summarization_request");
-                                    let result: anyhow::Result<OpenAIGPTSummarizationResult> = client_send_openai_gpt_summarization_request("./tmp/rust_openai_gpt_tools_socket",text,prompt);
-                                    error!("OpenAIGPTSummarizationResult: {:?}",result);
-
-                                    let result: Maybe<ResponseResult> = Maybe {
-                                        data: match result {
-                                                    Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result{
-                                                        text: data.request.text,
-                                                        prompt: data.request.prompt,
-                                                        result: data.result
-                                                    })),
-                                                    Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
-                                                },
-                                        timestamp: Utc::now().timestamp(),
-                                    };
-                                    keys.push(format!("{}_{}",GPT3_PREFIX,hash));
-                                    task_store.push(&keys.last().unwrap(),result).ok();
-
-                                    // progress
-                                    let result: Maybe<ResponseResult> = Maybe {
-                                        data: Ok(ResponseResult::GPT3ResultStatus(GPT3ResultStatus{
-                                            number_of_results: counter_results + counter_existing_results,
-                                        })),
-                                        timestamp: Utc::now().timestamp(),
-                                    };
-                                    error!("RustBertGPT3Progress: {:?}",result);
-
-                                    keys.push(key.to_owned());
-                                    task_store.push(&key,result).ok();
-
-                                    counter_results+=1usize;
-                                }else{
-                                    counter_existing_results+=1usize;
+                                        keys.push(key.to_owned());
+                                        task_store.push(&key, result).ok();
+                                    } else {
+                                        counter_existing_results += 1usize;
+                                    }
                                 }
                             }
                         }
-
                     }
                 }
             },
@@ -90,4 +76,34 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     Ok(TaskResult{
         list_of_keys_modified: keys
     })
+}
+
+pub fn insert_gpt3_result(task_store: &TaskMemoryStore, hash: u64, prompt_id: &str, text: &str, prompt: &str) -> Option<String> {
+
+
+    let key_for_hash = get_key_for_hash(hash,prompt_id);
+
+    if !task_store.contains_key(&key_for_hash) {
+
+
+        error!("client_send_openai_gpt_summarization_request");
+        let result: anyhow::Result<OpenAIGPTSummarizationResult> = client_send_openai_gpt_summarization_request("./tmp/rust_openai_gpt_tools_socket", text.to_owned(), prompt.to_owned());
+        error!("OpenAIGPTSummarizationResult: {:?}",result);
+
+        let result: Maybe<ResponseResult> = Maybe {
+            data: match result {
+                Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
+                    text: data.request.text,
+                    prompt: data.request.prompt,
+                    result: data.result
+                })),
+                Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
+            },
+            timestamp: Utc::now().timestamp(),
+        };
+        task_store.push(&key_for_hash, result).ok();
+        Some(key_for_hash)
+    }else{
+        None
+    }
 }
