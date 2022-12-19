@@ -43,11 +43,15 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 let text = format!("{}/n{}", title, description);
                                 let prompts = [
                                     "Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet.",
-                                    "Bullet points: including information about the proposed budget, any risks or drawbacks that should be considered, any other relevant details and recommendations or advice for evaluating the proposal."
+                                    "Bullet points: Benefits, Risks, Recommendations or advice for evaluating the proposal."
+                                ];
+                                let completion_token_limits = [
+                                    100u16,
+                                    1000u16,
                                 ];
 
                                 for i in 0..prompts.len() {
-                                    if let Some(inserted_key) = insert_gpt3_result(&task_store, hash, &format!("briefing{}",i), &text, prompts[i]) {
+                                    if let Some(inserted_key) = insert_gpt3_result(&task_store, hash, &format!("briefing{}",i), &text, prompts[i],completion_token_limits[i]) {
                                         counter_results += 1usize;
 
                                         // progress
@@ -78,7 +82,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     })
 }
 
-pub fn insert_gpt3_result(task_store: &TaskMemoryStore, hash: u64, prompt_id: &str, text: &str, prompt: &str) -> Option<String> {
+pub fn insert_gpt3_result(task_store: &TaskMemoryStore, hash: u64, prompt_id: &str, text: &str, prompt: &str, completion_token_limit: u16) -> Option<String> {
 
 
     let key_for_hash = get_key_for_hash(hash,prompt_id);
@@ -87,7 +91,7 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, hash: u64, prompt_id: &s
 
 
         error!("client_send_openai_gpt_summarization_request");
-        let result: anyhow::Result<OpenAIGPTSummarizationResult> = client_send_openai_gpt_summarization_request("./tmp/rust_openai_gpt_tools_socket", text.to_owned(), prompt.to_owned());
+        let result: anyhow::Result<OpenAIGPTSummarizationResult> = client_send_openai_gpt_summarization_request("./tmp/rust_openai_gpt_tools_socket", text.to_owned(), prompt.to_owned(),completion_token_limit);
         error!("OpenAIGPTSummarizationResult: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
