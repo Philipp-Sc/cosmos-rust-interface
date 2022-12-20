@@ -289,8 +289,18 @@ impl Entry {
         k
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum SubscriptionAction {
+    Created,
+    AddUser,
+    RemoveUser,
+    Update,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Subscription {
+    pub action: SubscriptionAction,
     pub query: QueryPart,
     pub user_list: HashSet<u64>,
     pub list: Vec<Vec<u8>>,

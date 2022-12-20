@@ -405,6 +405,7 @@ impl CosmosRustBotStore {
                         if let CosmosRustBotValue::Subscription(mut s) = s.to_vec().try_into().unwrap() {
                             if subscribe {
                                 s.add_user_hash(user_hash);
+                                s.action = SubscriptionAction::AddUser;
 
                                 let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
                                 self.subscription_store.0.insert(s_key, value)
@@ -414,6 +415,7 @@ impl CosmosRustBotStore {
                                     self.subscription_store.0.remove(&s_key).ok();
                                 } else {
                                     s.remove_user_hash(user_hash);
+                                    s.action = SubscriptionAction::RemoveUser;
 
                                     let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
                                     self.subscription_store.0.insert(s_key, value)
@@ -425,6 +427,7 @@ impl CosmosRustBotStore {
                     Ok(None) => {
                         if !unsubscribe && subscribe {
                             let mut s = Subscription {
+                                action: SubscriptionAction::Created,
                                 query: QueryPart::EntriesQueryPart(query_part.clone()),
                                 user_list: HashSet::new(),
                                 list: Vec::new(),
@@ -458,6 +461,7 @@ impl CosmosRustBotStore {
                             if settings_part.unsubscribe.unwrap_or(false) {
                                 let mut new_subscription = subscription.clone();
                                 new_subscription.remove_user_hash(user_hash);
+                                new_subscription.action = SubscriptionAction::RemoveUser;
                                 let new_val = CosmosRustBotValue::Subscription(new_subscription);
                                 let key = new_val.key();
                                 let value: Vec<u8> = new_val.try_into().unwrap();
@@ -507,6 +511,7 @@ impl CosmosRustBotStore {
         // refreshing subscriptions by updating them if their content changed.
         for mut subscription in self.subscription_store.get_subscriptions() {
             if self.subscription_outdated(&mut subscription){
+                subscription.action = SubscriptionAction::Update;
                 let item = CosmosRustBotValue::Subscription(subscription);
                 let key = item.key();
                 let value: Vec<u8> = item.try_into().unwrap();
@@ -548,25 +553,28 @@ impl CosmosRustBotStore {
         tokio::spawn(async move {
             while let Some(updated) = copy_self.subscription_store.get_next_updated_subscription() {
                 if let Ok(s) = updated {
-                    let query: UserQuery = UserQuery {
-                        query_part: s.query,
-                        settings_part: SettingsPart {
-                            subscribe: None,
-                            unsubscribe: None,
-                            user_hash: None,
-                        }
-                    };
-                    let entries = copy_self.handle_query(&query);
-                    let notification = Notification {
-                        query,
-                        entries,
-                        user_list: s.user_list,
-                    };
-                    // notify
-                    client_send_notification_request(
-                        NOTIFICATION_SOCKET,
-                        CosmosRustServerValue::Notification(notification),
-                    ).ok();
+                    if s.action == SubscriptionAction::Update  {
+
+                        let query: UserQuery = UserQuery {
+                            query_part: s.query,
+                            settings_part: SettingsPart {
+                                subscribe: None,
+                                unsubscribe: None,
+                                user_hash: None,
+                            }
+                        };
+                        let entries = copy_self.handle_query(&query);
+                        let notification = Notification {
+                            query,
+                            entries,
+                            user_list: s.user_list,
+                        };
+                        // notify
+                        client_send_notification_request(
+                            NOTIFICATION_SOCKET,
+                            CosmosRustServerValue::Notification(notification),
+                        ).ok();
+                    }
                 }
             }
         })
