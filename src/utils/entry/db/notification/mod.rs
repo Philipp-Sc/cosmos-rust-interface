@@ -202,6 +202,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                     vec![("🤔 Recommendations or advice".to_string(), command)],
                                                 );
                                             }
+                                            buttons.push(navigation);
 
 
                                         }else if &query_part.display == "content" {
