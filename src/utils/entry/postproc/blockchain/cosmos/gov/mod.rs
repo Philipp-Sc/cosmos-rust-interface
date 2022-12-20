@@ -54,26 +54,27 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let gpt3_result_summary = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash,"briefing0"),&RetrievalMethod::GetOk){
-                    Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result{ text, prompt, result })), timestamp }) => {
-                        Some(result)
-                    }
-                    Err(_) => {None}
-                    _ => {None}
-                };
 
-                let gpt3_result_briefing1 = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash,"briefing1"),&RetrievalMethod::GetOk){
-                    Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result{ text, prompt, result })), timestamp }) => {
-                        Some(result)
-                    }
-                    Err(_) => {None}
-                    _ => {None}
-                };
 
-                let briefings = vec![
-                    format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result_summary.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string())),
-                    format!("⚡ AI-Generated Briefing\n\n{}",gpt3_result_briefing1.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()))
-                ];
+                let mut briefings = Vec::new();
+
+                for i in 0..10 {
+                    let gpt3_result_briefing = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
+                        Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { text, prompt, result })), timestamp }) => {
+                            Some(result)
+                        }
+                        Err(_) => { None }
+                        _ => { None }
+                    };
+                    if i == 0 {
+                        briefings.push(format!("⚡ AI-Generated Briefing\n\n{}", gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim()));
+                    }
+                    else{
+                        briefings.push(format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim()))
+
+                    }
+
+                }
 
 
                 let data =  ProposalData {
