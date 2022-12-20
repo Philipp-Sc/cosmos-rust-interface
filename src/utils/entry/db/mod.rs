@@ -27,6 +27,8 @@ const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
 
 const REV_INDEX_PREFIX: &str = "rev_index_";
 
+const CRB_SUBSCRIPTION_STORE_JSON: &str = "./tmp/cosmos_rust_bot_subscriptions.json";
+
 pub fn load_sled_db(path: &str) -> sled::Db {
     let db: sled::Db = sled::Config::default()
         .path(path.to_owned())
@@ -275,11 +277,11 @@ impl Clone for CosmosRustBotStore {
 
 impl CosmosRustBotStore {
 
-    pub fn new(entry_index_db: sled::Db, subscription_db: sled::Db) -> Self {
+    pub fn new(entry_index_db: sled::Db, subscription_store: SubscriptionStore) -> Self {
         CosmosRustBotStore {
             entry_store: EntryStore::new(&entry_index_db),
             index_store: IndexStore::new(&entry_index_db),
-            subscription_store: SubscriptionStore::new(&subscription_db),
+            subscription_store,
         }
     }
 
@@ -693,6 +695,26 @@ impl SubscriptionStore {
         })
     }
 
+    pub fn export_subscriptions(&self, path: &str){
+        let json = serde_json::json!(self.get_subscriptions().collect::<Vec<Subscription>>());
+        if let Ok(serialized) = serde_json::to_string_pretty(&json) {
+            std::fs::write(path, serialized).ok();
+        }
+    }
+
+    pub fn import_subscriptions(&self, path: &str){
+        if let Ok(contents) = std::fs::read_to_string(path){
+            if let Ok(subscriptions) = serde_json::from_str::<Vec<Subscription>>(&contents){
+                for subscription in subscriptions {
+                    let item = CosmosRustBotValue::Subscription(subscription);
+                    let key = item.key();
+                    let value: Vec<u8> = item.try_into().unwrap();
+                    self.0.db.insert(&key, value).ok();
+                }
+            }
+        }
+    }
+
     pub fn get_next_updated_subscription(&mut self) -> Option<anyhow::Result<Subscription>> {
         match self.0.await_next_update() {
             Some(sled::Event::Remove { key }) => {
@@ -701,6 +723,7 @@ impl SubscriptionStore {
             Some(sled::Event::Insert { key, value }) => {
                 match value.to_vec().try_into().unwrap() {
                     CosmosRustBotValue::Subscription(s) => {
+                        self.export_subscriptions(CRB_SUBSCRIPTION_STORE_JSON);
                         Some(Ok(s))
                     },
                     _ => {
