@@ -43,11 +43,28 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 let text = format!("{}/n{}", title, description);
                                 let prompts = [
                                     "Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet.",
-                                    "Bullet points: Benefits, Risks, Recommendations or advice for evaluating the proposal."
+                                    /*"Bullet points: Benefits, Risks, Recommendations or advice for evaluating the proposal.",*/
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Feasibility and technical viability",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Economic impact",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Legal and regulatory compliance",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Long-term sustainability",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Transparency & Accountability",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Community Support",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Risks",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Benefits",
+                                    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Recommendations or advice",
                                 ];
                                 let completion_token_limits = [
                                     100u16,
-                                    1000u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
+                                    100u16,
                                 ];
 
                                 for i in 0..prompts.len() {

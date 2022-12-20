@@ -119,7 +119,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                             if let Some(command) = custom_data.command("briefing0"){
                                                 navigation_row2.push(
-                                                    ("⚡ Briefing".to_string(), command),
+                                                    ("⚡ Start Briefing".to_string(), command),
                                                 );
                                             }
 
@@ -144,14 +144,65 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                         }else if &query_part.display == "briefing0" {
 
+/*
+                                            "🛠️ Feasibility and technical viability"
+                                            "💸 Economic impact"
+                                            "⚖️ Legal and regulatory compliance"
+                                            "🌿 Long-term sustainability"
+                                            "🔎 Transparency & Accountability"
+                                            "👥 Community Support"
+                                            "⚠️ Risks"
+                                            "🎉 Benefits"
+                                            "🤔 Recommendations or advice"
+
+ */
+
                                             if let Some(command) = custom_data.command("briefing1"){
-                                                navigation_row2.push(
-                                                    ("⚡ Continue".to_string(), command),
+                                                navigation.push(
+                                                    vec![("🛠️ Feasibility and technical viability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing2"){
+                                                navigation.push(
+                                                    vec![("💸 Economic impact".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing3"){
+                                                navigation.push(
+                                                    vec![("⚖️ Legal and regulatory compliance".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing4"){
+                                                navigation.push(
+                                                    vec![("🌿 Long-term sustainability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing5"){
+                                                navigation.push(
+                                                    vec![("🔎 Transparency & Accountability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing6"){
+                                                navigation.push(
+                                                    vec![("👥 Community Support".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing7"){
+                                                navigation.push(
+                                                    vec![("⚠️ Risks".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing8"){
+                                                navigation.push(
+                                                    vec![("🎉 Benefits".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing9"){
+                                                navigation.push(
+                                                    vec![("🤔 Recommendations or advice".to_string(), command)],
                                                 );
                                             }
 
-                                            navigation.push(navigation_row2);
-                                            buttons.push(navigation);
 
                                         }else if &query_part.display == "content" {
 
