@@ -17,7 +17,7 @@ pub struct NotificationHandler
 }
 impl Handler for NotificationHandler
 {
-    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+    fn process(&mut self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
 
         let request: CosmosRustServerValue = bytes.try_into()?;
 

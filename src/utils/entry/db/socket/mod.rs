@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 pub trait Handler
 {
-    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>>;
+    fn process(&mut self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>>;
 }
 
-pub fn spawn_socket_service(socket_path: &str, handler: Box<dyn Handler + Send>) -> JoinHandle<()>
+pub fn spawn_socket_service(socket_path: &str, mut handler: Box<dyn Handler + Send>) -> JoinHandle<()>
 {
     let socket_path = socket_path.to_owned();
     std::thread::spawn(move || {
@@ -34,13 +34,13 @@ pub fn spawn_socket_service(socket_path: &str, handler: Box<dyn Handler + Send>)
                     .context("Failed at accepting a connection on the unix listener")
                     .unwrap();
 
-                handle_stream(unix_stream, &handler).unwrap();
+                handle_stream(unix_stream, &mut handler).unwrap();
             }
         }
     })
 }
 
-fn handle_stream(mut unix_stream: UnixStream, handler: &Box<dyn Handler + Send>) -> anyhow::Result<()>
+fn handle_stream(mut unix_stream: UnixStream, handler: &mut Box<dyn Handler + Send>) -> anyhow::Result<()>
 {
     let encoded: Vec<u8> = handler.process(get_bytes_from_stream(&mut unix_stream)?)?;
 

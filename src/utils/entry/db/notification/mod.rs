@@ -4,11 +4,13 @@ use std::collections::HashMap;
 
 pub mod socket;
 
-// TODO: if a user subscribes or unsubscribes or user data gets passed then write that data to a import export database
-// each time the tg bot is restarted it reloads the data.
-// make a special command to write out (export) all current subscriptions by each user. into json. call it snapshot.
-// make a special command to write out (export) all user meta data into json.
-// make a special command to load both json files.
+// cosmos-rust-bot: save subscriptions in separate SLED_DB
+// - [ cosmos_rust_bot_internal
+// - cosmos_rust_bot_entries ]
+// - cosmos_rust_bot_subscriptions
+// cosmos-rust-telegram-bot: make sure that if NOTIFY parsing fails, it is removed and ignored.
+// no need to import/export, just persist both dbs.
+
 pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
     match notification {
         CosmosRustServerValue::UserMetaData(_) => {

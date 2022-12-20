@@ -1,26 +1,34 @@
-use crate::utils::entry::db::query::handle_query_sled_db;
 use crate::utils::entry::{CosmosRustServerValue, Notification, UserQuery};
 use std::collections::HashSet;
 use super::super::socket::{client_send_request, Handler, spawn_socket_service};
 use std::thread::JoinHandle;
+use crate::utils::entry::db::CosmosRustBotStore;
 
-pub fn spawn_socket_query_server(socket_path: &str, tree: &sled::Db) -> JoinHandle<()> {
+pub fn spawn_socket_query_server(socket_path: &str, cosmos_rust_bot_store: &CosmosRustBotStore) -> JoinHandle<()> {
     println!("spawn_socket_service startup");
-    let task = spawn_socket_service(socket_path,Box::new(QueryHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
+    let task = spawn_socket_service(socket_path,Box::new(QueryHandler::new(cosmos_rust_bot_store)) as Box<dyn Handler + Send>);
     println!("spawn_socket_service ready");
     task
 }
 pub struct QueryHandler
 {
-    pub tree: sled::Db,
+    pub cosmos_rust_bot_store: CosmosRustBotStore,
+}
+
+impl QueryHandler {
+    fn new(cosmos_rust_bot_store: &CosmosRustBotStore) -> Self {
+        QueryHandler{
+            cosmos_rust_bot_store: cosmos_rust_bot_store.clone(),
+        }
+    }
 }
 impl Handler for QueryHandler
 {
-    fn process(&self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+    fn process(&mut self, bytes: Vec<u8>) -> anyhow::Result<Vec<u8>> {
 
         let user_query: UserQuery = UserQuery::try_from(bytes)?;
 
-        let entries = handle_query_sled_db(&self.tree, &user_query);
+        let entries = self.cosmos_rust_bot_store.handle_query(&user_query);
         let mut notification = Notification {
             query: user_query,
             entries,
