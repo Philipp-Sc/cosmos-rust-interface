@@ -21,6 +21,7 @@ use crate::utils::entry::db::query::socket::spawn_socket_query_server;
 use std::collections::HashMap;
 use crate::utils::response::ResponseResult;
 use chrono::Utc;
+use tokio::time::{sleep, Duration};
 
 
 const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
@@ -549,9 +550,15 @@ impl CosmosRustBotStore {
 
     pub fn spawn_notify_on_subscription_update_thread(&mut self) -> tokio::task::JoinHandle<()> {
         let mut copy_self = self.clone();
-        copy_self.subscription_store.register_subscriber();
         tokio::spawn(async move {
+
+            // Delay the task for 1 minute (60 seconds) 
+            sleep(Duration::from_secs(60)).await;
+
+            copy_self.subscription_store.register_subscriber().unwrap();
+
             while let Some(updated) = copy_self.subscription_store.get_next_updated_subscription() {
+
                 if let Ok(s) = updated {
                     if s.action == SubscriptionAction::Update  {
 
