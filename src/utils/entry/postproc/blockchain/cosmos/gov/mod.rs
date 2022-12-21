@@ -1,15 +1,18 @@
 use std::collections::HashMap;
+use chrono::Utc;
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::*;
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
-use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result};
+use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result, ProposalDataResult};
 
 use serde::{Deserialize,Serialize};
 use crate::services::fraud_detection::get_key_for_hash as fraud_detection_get_key_for_hash;
 use crate::services::gpt3::get_key_for_hash as gpt3_get_key_for_hash;
 
+
+const PROPOSAL_DATA_RESULT: &str = "ProposalDataResult";
 
 /// # Governance Proposal Notifications
 ///
@@ -39,10 +42,18 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
     //let mut proposals_for_csv: Vec<ProposalData> = Vec::new();
 
+    let mut list_proposal_hash: Vec<u64> = if let Ok(Maybe { data: Ok(ResponseResult::ProposalDataResult(ProposalDataResult{list_proposal_hash: list})), timestamp}) = task_store.get(PROPOSAL_DATA_RESULT, &RetrievalMethod::Get){
+        list
+    }else{
+        Vec::new()
+    };
+
     for (key, y) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         if let Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(gov_proposals))), timestamp } = y {
 
             for (mut proposal,origin,timestamp) in gov_proposals.into_iter().map(|x| (x, key.to_string(), timestamp.to_owned())) {
+
+                let proposal_hash = proposal.to_hash();
 
                 let hash = proposal.title_and_description_to_hash();
 
@@ -53,8 +64,6 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     Err(_) => {None}
                     _ => {None}
                 };
-
-
 
                 let mut briefings = Vec::new();
 
@@ -71,10 +80,8 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     }
                     else{
                         briefings.push(format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim()))
-
                     }
                 }
-
 
                 let data =  ProposalData {
                         proposal_link: proposal.governance_proposal_link(),
@@ -102,15 +109,28 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         CosmosRustBotValue::Entry(Entry::Value(Value {
                             timestamp: timestamp.to_owned(),
                             origin: origin.to_owned(),
-                            custom_data: CustomData::ProposalData(data)
+                            custom_data: CustomData::ProposalData(data),
+                            imperative: if list_proposal_hash.contains(&proposal_hash){
+                                            ValueImperative::Update
+                                        }else{
+                                            list_proposal_hash.push(proposal_hash);
+                                            ValueImperative::Notify
+                                        }
                         })));
                 }
-
 
                 // proposals_for_csv.push(data);
             }
         }
     }
+
+    let result: Maybe<ResponseResult> = Maybe {
+        data: Ok(ResponseResult::ProposalDataResult(ProposalDataResult {
+            list_proposal_hash
+        })),
+        timestamp: Utc::now().timestamp(),
+    };
+    task_store.push(PROPOSAL_DATA_RESULT, result).ok();
 /*
     let mut wtr = csv::Writer::from_path("./tmp/proposals.csv").unwrap();
 

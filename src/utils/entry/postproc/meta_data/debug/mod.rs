@@ -14,7 +14,8 @@ pub fn debug(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> Ve
                 view.push(CosmosRustBotValue::Entry(Entry::Value(Value {
                     timestamp: timestamp.to_owned(),
                     origin: "task_meta_data_debug".to_string(),
-                    custom_data: CustomData::Debug(Debug{ key: format!("{}", key), value: format!("{:?}", resolved) })
+                    custom_data: CustomData::Debug(Debug{ key: format!("{}", key), value: format!("{:?}", resolved) }),
+                    imperative: ValueImperative::Notify
                 })));
             }
             Maybe { data: Err(_), .. } => {}

@@ -189,7 +189,7 @@ trait GetField {
     }
 }
 
-#[derive(Serialize,Deserialize,Debug, Clone,PartialEq)]
+#[derive(Serialize,Deserialize,Debug, Clone,PartialEq, Hash)]
 pub struct ProposalData {
     pub proposal_link: String,
     pub proposal_clickbait: String,
@@ -210,30 +210,6 @@ pub struct ProposalData {
     pub proposal_content: String,
     pub proposal_state: String,
 }
-
-impl Hash for ProposalData {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.proposal_link.hash(state);
-        self.proposal_clickbait.hash(state);
-        self.proposal_details.hash(state);
-        self.proposal_blockchain.hash(state);
-        self.proposal_status.hash(state);
-        self.proposal_id.hash(state);
-        self.proposal_type.hash(state);
-        self.proposal_SubmitTime.hash(state);
-        self.proposal_DepositEndTime.hash(state);
-        self.proposal_VotingStartTime.hash(state);
-        self.proposal_VotingEndTime.hash(state);
-        self.proposal_LatestTime.hash(state);
-        self.proposal_title.hash(state);
-        self.proposal_description.hash(state);
-        self.proposal_vetoed.hash(state);
-        //self.proposal_briefings.hash(state); // excluded, because we do not want to change the hash every time this is updated.
-        self.proposal_content.hash(state);
-        self.proposal_state.hash(state);
-    }
-}
-
 
 impl GetField for ProposalData {}
 
@@ -275,12 +251,18 @@ pub struct Log {
 }
 impl GetField for Log {}
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum ValueImperative {
+    Notify,
+    Update,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Value {
     pub timestamp: i64,
     pub origin: String,
     pub custom_data: CustomData,
+    pub imperative: ValueImperative,
 }
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {

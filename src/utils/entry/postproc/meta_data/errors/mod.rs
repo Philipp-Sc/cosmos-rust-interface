@@ -28,7 +28,8 @@ pub fn errors(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> V
                         value: err.to_string(),
                         summary: format!("[{}] - {}: {}", kind, key, err.to_string()),
                         kind: kind.to_owned(),
-                    })
+                    }),
+                    imperative: ValueImperative::Notify
                 })));
             }
         }

@@ -16,6 +16,7 @@ pub enum ResponseResult {
     GPT3Result(GPT3Result),
     GPT3ResultStatus(GPT3ResultStatus),
     TaskResult(TaskResult),
+    ProposalDataResult(ProposalDataResult),
 }
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
@@ -48,6 +49,10 @@ impl TryFrom<ResponseResult> for Vec<u8> {
     }
 }*/
 
+#[derive(Serialize,Deserialize,Debug, Clone)]
+pub struct ProposalDataResult {
+    pub list_proposal_hash: Vec<u64>,
+}
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
 pub struct GPT3ResultStatus {

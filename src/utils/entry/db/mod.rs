@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use crate::utils::response::ResponseResult;
 use chrono::Utc;
 use tokio::time::{sleep, Duration};
+use crate::utils::entry::ValueImperative::Notify;
 
 
 const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
@@ -552,7 +553,7 @@ impl CosmosRustBotStore {
         let mut copy_self = self.clone();
         tokio::spawn(async move {
 
-            // Delay the task for 1 minute (60 seconds) 
+            // Delay the task for 1 minute (60 seconds)
             sleep(Duration::from_secs(60)).await;
 
             copy_self.subscription_store.register_subscriber().unwrap();
@@ -576,7 +577,6 @@ impl CosmosRustBotStore {
                             entries,
                             user_list: s.user_list,
                         };
-                        // notify
                         client_send_notification_request(
                             NOTIFICATION_SOCKET,
                             CosmosRustServerValue::Notification(notification),

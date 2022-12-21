@@ -90,7 +90,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                             match &n.entries[i] {
                                 CosmosRustBotValue::Index(_) => {}
-                                CosmosRustBotValue::Entry(Entry::Value(Value{ timestamp: _, origin: _, custom_data })) => {
+                                CosmosRustBotValue::Entry(Entry::Value(Value{ timestamp: _, origin: _, custom_data, imperative: ValueImperative::Notify })) => {
                                     msg.push(custom_data.display(&query_part.display));
 
                                     if query_part.message.contains("gov prpsl") {
@@ -217,6 +217,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                     }
                                 }
                                 CosmosRustBotValue::Subscription(_) => {}
+                                _ => {}
                             }
                         }
 
