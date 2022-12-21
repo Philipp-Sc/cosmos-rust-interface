@@ -571,16 +571,25 @@ impl CosmosRustBotStore {
                                 user_hash: None,
                             }
                         };
-                        let entries = copy_self.handle_query(&query);
-                        let notification = Notification {
-                            query,
-                            entries,
-                            user_list: s.user_list,
-                        };
-                        client_send_notification_request(
-                            NOTIFICATION_SOCKET,
-                            CosmosRustServerValue::Notification(notification),
-                        ).ok();
+                        let mut entries = copy_self.handle_query(&query);
+                        entries.retain(|x| {
+                            if let CosmosRustBotValue::Entry(Entry::Value(v)) = x {
+                                v.imperative == ValueImperative::Notify
+                            } else {
+                                true
+                            }
+                        });
+                        if !entries.is_empty() {
+                            let notification = Notification {
+                                query,
+                                entries,
+                                user_list: s.user_list,
+                            };
+                            client_send_notification_request(
+                                NOTIFICATION_SOCKET,
+                                CosmosRustServerValue::Notification(notification),
+                            ).ok();
+                        }
                     }
                 }
             }
