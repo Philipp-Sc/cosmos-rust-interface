@@ -1,20 +1,55 @@
 use crate::utils::entry::*;
 use chrono::Utc;
 use std::collections::HashMap;
+use std::iter::FilterMap;
 
 pub mod socket;
 
-// cosmos-rust-bot: save subscriptions in separate SLED_DB
-// - [ cosmos_rust_bot_internal
-// - cosmos_rust_bot_entries ]
-// - cosmos_rust_bot_subscriptions
-// cosmos-rust-telegram-bot: make sure that if NOTIFY parsing fails, it is removed and ignored.
-// no need to import/export, just persist both dbs.
+// TODO: the whole thing needs to be refactored into a NotificationStore struct.
+
+const CRB_USER_META_DATA_STORE_JSON: &str = "./tmp/cosmos_rust_telegram_bot_user_meta_data.json";
+
+pub fn get_user_meta_data(db: &sled::Db) -> impl Iterator<Item = UserMetaData> {
+
+    db.iter().values().filter_map(|x| {
+        if let Ok(value) = x {
+            if let CosmosRustServerValue::UserMetaData(user_meta_data) =
+            CosmosRustServerValue::try_from(value.to_vec()).unwrap()
+            {
+                return Some(user_meta_data);
+            }
+        }
+        return None;
+    })
+}
+
+pub fn export_user_meta_data(db: &sled::Db, path: &str){
+    let json = serde_json::json!(get_user_meta_data(db).collect::<Vec<UserMetaData>>());
+    if let Ok(serialized) = serde_json::to_string_pretty(&json) {
+        std::fs::write(path, serialized).ok();
+    }
+}
+
+// TODO: implement when I broke things.
+pub fn import_user_meta_data(db: &sled::Db, path: &str){
+    if let Ok(contents) = std::fs::read_to_string(path){
+        if let Ok(user_meta_data) = serde_json::from_str::<Vec<UserMetaData>>(&contents){
+            for data in user_meta_data {
+                let item = CosmosRustServerValue::UserMetaData(data);
+                let key = item.key();
+                let value: Vec<u8> = item.try_into().unwrap();
+                db.insert(&key, value).ok();
+            }
+        }
+    }
+}
 
 pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
     match notification {
         CosmosRustServerValue::UserMetaData(_) => {
             db.insert(notification.key(), TryInto::<Vec<u8>>::try_into(notification).unwrap()).ok();
+            // every time a user writes to the bot. TODO: improve this.
+            export_user_meta_data(db,CRB_USER_META_DATA_STORE_JSON);
         }
         CosmosRustServerValue::Notify(_) => {
             db.insert(notification.key(), TryInto::<Vec<u8>>::try_into(notification).unwrap()).ok();
