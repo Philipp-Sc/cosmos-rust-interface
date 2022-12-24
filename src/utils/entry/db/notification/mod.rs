@@ -129,20 +129,18 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                     msg.push(custom_data.display(&query_part.display));
 
                                     if query_part.message.contains("gov prpsl") {
-
                                         let mut navigation = Vec::new();
                                         let mut navigation_row = Vec::new();
                                         let mut navigation_row2 = Vec::new();
 
                                         if &query_part.display == "default" {
-
-                                            if let Some(command) = custom_data.command("status"){
+                                            if let Some(command) = custom_data.command("status") {
                                                 navigation_row.push(
                                                     ("📊 Status".to_string(), command),
                                                 );
                                             }
 
-                                            if let Some(command) = custom_data.command("content"){
+                                            if let Some(command) = custom_data.command("content") {
                                                 navigation_row.push(
                                                     ("🏛 ️Proposal".to_string(), command),
                                                 );
@@ -154,20 +152,18 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                 );
                                             }
 
-                                            if let Some(command) = custom_data.command("briefing0"){
+                                            if let Some(command) = custom_data.command("briefing0") {
                                                 navigation_row2.push(
                                                     ("⚡ Start Briefing".to_string(), command),
                                                 );
                                             }
 
 
-
                                             navigation.push(navigation_row);
                                             navigation.push(navigation_row2);
 
                                             buttons.push(navigation);
-                                        }else if &query_part.display == "status" {
-
+                                        } else if &query_part.display == "status" {
                                             /*
                                             navigation.push(vec![
                                                 ("Tally".to_string(), format!("{}", query_part.message)),
@@ -178,71 +174,55 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                             */
 
                                             // who voted how?
-
-                                        }else if &query_part.display == "briefing0" {
-
-/*
-                                            "🛠️ Feasibility and technical viability"
-                                            "💸 Economic impact"
-                                            "⚖️ Legal and regulatory compliance"
-                                            "🌿 Long-term sustainability"
-                                            "🔎 Transparency & Accountability"
-                                            "👥 Community Support"
-                                            "⚠️ Risks"
-                                            "🎉 Benefits"
-                                            "🤔 Recommendations or advice"
-
- */
-
+                                        } else if &query_part.display == "briefing0" {
                                             if let Some(command) = custom_data.command("briefing1"){
                                                 navigation.push(
-                                                    vec![("🛠️ Feasibility and technical viability".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing2"){
-                                                navigation.push(
-                                                    vec![("💸 Economic impact".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing3"){
-                                                navigation.push(
-                                                    vec![("⚖️ Legal and regulatory compliance".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing4"){
-                                                navigation.push(
-                                                    vec![("🌿 Long-term sustainability".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing5"){
-                                                navigation.push(
-                                                    vec![("🔎 Transparency & Accountability".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing6"){
-                                                navigation.push(
-                                                    vec![("👥 Community Support".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing7"){
-                                                navigation.push(
-                                                    vec![("⚠️ Risks".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing8"){
-                                                navigation.push(
-                                                    vec![("🎉 Benefits".to_string(), command)],
-                                                );
-                                            }
-                                            if let Some(command) = custom_data.command("briefing9"){
-                                                navigation.push(
-                                                    vec![("🤔 Recommendations or advice".to_string(), command)],
+                                                    vec![("What problem is it attempting to solve, and how does it propose to do so?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
+                                        } else if &query_part.display == "briefing1" {
+                                            if let Some(command) = custom_data.command("briefing2"){
+                                                navigation.push(
+                                                    vec![("What are the potential benefits of the proposal?".to_string(), command)],
+                                                );
+                                            }
+                                            buttons.push(navigation);
+                                        } else if &query_part.display == "briefing2" {
+                                            if let Some(command) = custom_data.command("briefing3"){
+                                                navigation.push(
+                                                    vec![("What are the potential risks or downsides of the proposal?".to_string(), command)],
+                                                );
+                                            }
+                                            buttons.push(navigation);
+                                        } else if &query_part.display == "briefing3" {
+                                            if let Some(command) = custom_data.command("briefing4"){
+                                                navigation.push(
+                                                    vec![("Who is behind the proposal?".to_string(), command)],
+                                                );
+                                            }
 
+                                            buttons.push(navigation);
+                                        } else if &query_part.display == "briefing4" {
+                                            if let Some(command) = custom_data.command("briefing5"){
+                                                navigation.push(
+                                                    vec![("How would the proposal be funded?".to_string(), command)],
+                                                );
+                                            }
 
-                                        }else if &query_part.display == "content" {
+                                            buttons.push(navigation);
+                                        } else if &query_part.display == "briefing5" {
+
+                                            if let Some(command) = custom_data.command("briefing6"){
+                                                navigation.push(
+                                                    vec![("How would the proposal be implemented?".to_string(), command)],
+                                                );
+                                            }
+
+                                            buttons.push(navigation);
+                                        } else if &query_part.display == "briefing6" {
+
+                                        } else if &query_part.display == "content" {
 
                                         }
 

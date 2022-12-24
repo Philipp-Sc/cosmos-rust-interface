@@ -11,7 +11,7 @@ use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
 
 
-pub fn get_key_for_hash(hash: u64) -> String {
+pub fn get_key_for_fraud_detection(hash: u64) -> String {
     format!("{}_{}",FRAUD_DETECTION_PREFIX,hash)
 }
 
@@ -30,7 +30,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                 for each in proposals.iter_mut().filter(|x| x.status==ProposalStatus::StatusDepositPeriod || x.status==ProposalStatus::StatusVotingPeriod) {
 
                     let hash = each.title_and_description_to_hash();
-                    let key_for_hash = get_key_for_hash(hash);
+                    let key_for_hash = get_key_for_fraud_detection(hash);
 
                     if !task_store.contains_key(&key_for_hash){ // TODO: need to check if OK or ERROR
 

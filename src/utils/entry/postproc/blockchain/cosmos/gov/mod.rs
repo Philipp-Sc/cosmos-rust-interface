@@ -8,8 +8,8 @@ use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result, ProposalDataResult};
 
 use serde::{Deserialize,Serialize};
-use crate::services::fraud_detection::get_key_for_hash as fraud_detection_get_key_for_hash;
-use crate::services::gpt3::get_key_for_hash as gpt3_get_key_for_hash;
+use crate::services::fraud_detection::get_key_for_fraud_detection as fraud_detection_get_key_for_hash;
+use crate::services::gpt3::get_key_for_gpt3 as gpt3_get_key_for_hash;
 
 
 const PROPOSAL_DATA_RESULT: &str = "ProposalDataResult";

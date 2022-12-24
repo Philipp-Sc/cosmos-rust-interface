@@ -17,6 +17,8 @@ pub enum ResponseResult {
     GPT3ResultStatus(GPT3ResultStatus),
     TaskResult(TaskResult),
     ProposalDataResult(ProposalDataResult),
+    LinkToTextResult(LinkToTextResult),
+    LinkToTextResultStatus(LinkToTextResultStatus),
 }
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
@@ -52,6 +54,17 @@ impl TryFrom<ResponseResult> for Vec<u8> {
 #[derive(Serialize,Deserialize,Debug, Clone)]
 pub struct ProposalDataResult {
     pub list_proposal_hash: Vec<u64>,
+}
+
+#[derive(Serialize,Deserialize,Debug, Clone)]
+pub struct LinkToTextResult {
+    pub link: String,
+    pub text: String,
+}
+
+#[derive(Serialize,Deserialize,Debug, Clone)]
+pub struct LinkToTextResultStatus {
+    pub number_of_results: usize,
 }
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
