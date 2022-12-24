@@ -48,7 +48,6 @@ How would the proposal be implemented? What technical changes would be required,
 const SUMMARY_PROMPT: &str ="Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet.";
 
 const PROMPTS: [&str;6] = [
-
             "What problem is it attempting to solve, and how does it propose to do so?",
             "What are the potential benefits of the proposal? How will it improve the operation of the cryptocurrency or blockchain in question?",
             "What are the potential risks or downsides of the proposal? What unintended consequences might it have, and how might these be mitigated?",
@@ -79,45 +78,51 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        let bullet_points = retrieve_paragraph_to_bullet_points_results(&task_store, &description);
+                        let bullet_points_for_each = retrieve_paragraph_to_bullet_points_results(&task_store, &description);
+                        // Ok(None) -> something went wrong
+                        // Err(_) -> key not yet available
+                        // Ok(Some()) -> bullet point.
 
-                        let mut bullet_point_text = String::new();
-                        for bullet_point in bullet_points {
-                            if let Some(bp) = bullet_point {
-                                let lines: Vec<&str> = bp
-                                    .split("•")
-                                    .flat_map(|line| line.split("\\n"))
-                                    .flat_map(|line| line.split("\n"))
-                                    .collect();
-                                for line in lines {
-                                    if !(bullet_point_text.len() + line.len() > 4 * 3000) {
-                                        bullet_point_text.push_str(line);
-                                        bullet_point_text.push_str("\n");
-                                    } else {
-                                        break; // out of space for bullet points
+                        // check if bullet_points contain Err(_) if yes, then continue.
+
+                        if bullet_points_for_each.iter().flatten().filter(|x| x.is_err()).count() == 0 {
+                            let mut bullet_point_text = String::new();
+                            for bullet_points in bullet_points_for_each {
+                                for bullet_point in bullet_points {
+                                    if let Ok(Some(bp)) = bullet_point {
+                                        let lines: Vec<String> = bp
+                                            .split_whitespace()
+                                            .map(|x| format!("{} ", x))
+                                            .collect();
+                                        for line in lines {
+                                            if !(bullet_point_text.len() + line.len() > 4 * 3500) {
+                                                bullet_point_text.push_str(&line);
+                                            } else {
+                                                break; // out of space for bullet points
+                                            }
+                                        }
                                     }
                                 }
                             }
+
+                            // TODO: use embedding api and order by distance, then take first n elements until full.
+                            // TODO: discourages duplicate / similar bullet points.
+                            // for now top-down selection until size limit reached
+                            // TODO: use embedding to filter points specifically for different prompts.
+
+                            for i in 0..PROMPTS.len() {
+                                // ** this means this might be called more than once.
+                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
+                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &bullet_point_text, PROMPTS[i], 100u16);
+                                insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
+                            }
                         }
-                        // TODO: use embedding api and order by distance, then take first n elements until full.
-                        // TODO: discourages duplicate / similar bullet points.
-                        // for now top-down selection until size limit reached
-                        // TODO: use embedding to filter points specifically for different prompts.
-
-
-                        // first get the summary
+                        
+                        // get the summary
                         let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                         let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &text, SUMMARY_PROMPT,100u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
 
-
-                        for i in 0..PROMPTS.len() {
-
-                            let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i+1));
-                            let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &bullet_point_text, PROMPTS[i],100u16);
-                            insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
-                            
-                        }
                     }
                 }
             },
@@ -149,19 +154,19 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
     }
 }
 
-pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore, description: &str) -> Vec<Option<String>> {
+pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore, description: &str) -> Vec<Vec<anyhow::Result<Option<String>>>> {
 
-    let mut texts: Vec<Option<String>> = Vec::new();
 
+    let mut bullet_points_for_each: Vec<Vec<anyhow::Result<Option<String>>>> = Vec::new();
 
     let mut linked_text = retrieve_link_to_text_results(&task_store,description);
-    linked_text.insert(0, Some(description.to_string()));
+    linked_text.insert(0, Ok(Some(description.to_string())));
 
 
     let max_number_of_links = 3usize;
     let max_number_of_paragraphs = 6usize;
-    let max_prompt_length = 1000usize; // ~250 tokens
-    let max_prompt_output_length = 100u16; // tokens
+    let max_prompt_length = 1500usize; // ~300 tokens
+    let max_prompt_output_length = 150u16; // tokens
     // WORST CASE
     // max_number_of_links X max_number_of_paragraphs X (max_prompt_length + output tokens)
     // currently --> 6300 tokens total
@@ -169,69 +174,78 @@ pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore,
     // TAKE ONLY FIRST N LINKS (actually last N LINKS within proposal)
     for i in 0..std::cmp::min(max_number_of_links,linked_text.len()) {
 
-        if let Some(text) = &linked_text[i] {
+            let mut bullet_points_for_text: Vec<anyhow::Result<Option<String>>> = Vec::new();
 
-            let p = text.replace("\n","\\n").split("\\n").map(|x| x.to_string()).collect::<Vec<String>>();
-            let split_paragraphs = p.iter().map(|x| x.chars().collect::<Vec<char>>().chunks(1024).map(|chunk| chunk.iter().collect::<String>()).collect::<Vec<String>>()).collect::<Vec<Vec<String>>>();
+            if let Ok(Some(text))= &linked_text[i] {
 
-            // now go over the split_paragraphs and build your string until size exhausted.
-            // this way the final string will end naturally most of the time.
-            
-            let mut size_limited_paragraphs: Vec<String> = Vec::new();
 
-            for paragraphs in split_paragraphs {
-                let mut resulting_string = String::new();
-                for paragraph in paragraphs {
-                    if resulting_string.len() + paragraph.len() > max_prompt_length {
-                        size_limited_paragraphs.push(resulting_string);
-                        resulting_string = String::new();
+                let split_whitespace = text.split_whitespace()
+                    .map(|x| format!("{} ", x))
+                    .collect::<Vec<String>>();
+
+                // now go over the split_paragraphs and build your string until size exhausted.
+                // this way the final string will end naturally most of the time.
+
+                let mut size_limited_paragraphs: Vec<String> = Vec::new();
+
+                let mut paragraph = String::new();
+
+                for word in split_whitespace {
+                    if paragraph.len() + word.len() > max_prompt_length {
+                        size_limited_paragraphs.push(paragraph);
+                        paragraph = String::new();
                     }
-                    resulting_string.push_str(&paragraph);
+                    paragraph.push_str(&word);
                 }
-                size_limited_paragraphs.push(resulting_string);
-            }
-            // TAKE ONLY FIRST N Paragraphs
-            size_limited_paragraphs = size_limited_paragraphs.into_iter().take(max_number_of_paragraphs).collect();
+                size_limited_paragraphs.push(paragraph);
 
-            for each in &size_limited_paragraphs {
+                // TAKE ONLY FIRST N Paragraphs
+                size_limited_paragraphs = size_limited_paragraphs.into_iter().take(max_number_of_paragraphs).collect();
 
-                let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
-                insert_gpt3_result(&task_store, &key_for_hash, each, "Reiterate the all points present in a concise and clear manner, removing any unnecessary information, noise or filler words. Presented as bullet points.",max_prompt_output_length);
-            }
+                for each in &size_limited_paragraphs {
+                    let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
+                    insert_gpt3_result(&task_store, &key_for_hash, each, "This is a summary in the form of concise bullet points (= key points,highlights,key takeaways,key ideas,key messages).", max_prompt_output_length);
+                }
 
-            for each in &size_limited_paragraphs {
-
-                let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
-                if task_store.contains_key(&key_for_hash) {
-                    match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result, .. })), .. }) => {
-                            texts.push(Some(result));
+                for each in &size_limited_paragraphs {
+                    let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
+                    if task_store.contains_key(&key_for_hash) {
+                        match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
+                            Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result, .. })), .. }) => {
+                                bullet_points_for_text.push(Ok(Some(result)));
+                            }
+                            Err(err) => { bullet_points_for_text.push(Err(anyhow::anyhow!(err))); }
+                            _ => { bullet_points_for_text.push(Ok(None)); }
                         }
-                        Err(_) => { texts.push(None); }
-                        _ => { texts.push(None); }
                     }
                 }
             }
-        }
+            else if let Err(err)= &linked_text[i] { // value not yet available
+                bullet_points_for_text.push(Err(anyhow::anyhow!(err.to_string())));
+            }
+           else if let Ok(None)= &linked_text[i] { // error case
+               bullet_points_for_text.push(Ok(None));
+            }
+        bullet_points_for_each.push(bullet_points_for_text);
     }
-    texts
+    bullet_points_for_each
 }
 
 
-pub fn retrieve_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> Vec<Option<String>> {
+pub fn retrieve_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> Vec<anyhow::Result<Option<String>>> {
 
     let link_keys = extract_links(description).iter().map(|x| get_key_for_link_to_text(&link_to_id(x))).collect::<Vec<String>>();
 
-    let mut texts: Vec<Option<String>> = Vec::new();
+    let mut texts: Vec<anyhow::Result<Option<String>>> = Vec::new();
 
     for link_key in link_keys {
         if task_store.contains_key(&link_key) {
             match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
                 Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(LinkToTextResult { link, text, .. })), .. }) => {
-                     texts.push(Some(text));
+                     texts.push(Ok(Some(text)));
                 }
-                Err(_) => { texts.push(None); }
-                _ => { texts.push(None); }
+                Err(err) => { texts.push(Err(anyhow::anyhow!(err))); }
+                _ => { texts.push(Ok(None)); }
             }
         }
     }
