@@ -136,7 +136,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                             // for now top-down selection until size limit reached
                             // TODO: use embedding to filter points specifically for different prompts.
 
-                            for i in 0..5 {
+                            for i in 0..3 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::QUESTION(i));

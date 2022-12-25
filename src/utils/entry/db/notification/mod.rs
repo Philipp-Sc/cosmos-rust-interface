@@ -196,7 +196,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                             }
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing3" {
-                                            
+
                                         } else if &query_part.display == "briefing4" {
 
                                         } else if &query_part.display == "briefing5" {
