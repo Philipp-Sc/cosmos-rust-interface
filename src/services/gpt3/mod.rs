@@ -50,11 +50,11 @@ const PROMPTS: [&str;8] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
             "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
             "The the link that leads to the community discussion / post / forum / thread for this proposal (if none of the links fit return None).",
-            "What problem is it attempting to solve, and how does it propose to do so?",
-            "What are the potential benefits of the proposal? How will it improve the operation of the cryptocurrency or blockchain in question?",
-            "What are the potential risks or downsides of the proposal? What unintended consequences might it have, and how might these be mitigated?",
-            "How would the proposal be funded? Would it require the allocation of new tokens, or the use of existing funds?",
-            "How would the proposal be implemented? What technical changes would be required, and how would they be implemented?"
+            "Why is this proposal important?",
+            "What are the stated benefits or effects?",
+            "What are the stated risks or downsides?",
+            "What is mentioned regarding the funding? ",
+            "What stated steps are required to implement this proposal?"
                ];
 
 pub enum PromptKind {
