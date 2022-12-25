@@ -46,9 +46,10 @@ How would the proposal be implemented? What technical changes would be required,
 */
 
 
-const PROMPTS: [&str;7] = [
+const PROMPTS: [&str;8] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
             "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
+            "The the link that leads to the community discussion / post / forum / thread for this proposal (if none of the links fit return None).",
             "What problem is it attempting to solve, and how does it propose to do so?",
             "What are the potential benefits of the proposal? How will it improve the operation of the cryptocurrency or blockchain in question?",
             "What are the potential risks or downsides of the proposal? What unintended consequences might it have, and how might these be mitigated?",
@@ -60,6 +61,7 @@ pub enum PromptKind {
     SUMMARY,
     BULLET_POINTS,
     QUESTION(usize),
+    LINK_TO_COMMUNITY,
 
 }
 
@@ -73,11 +75,16 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet brief_overview: &str  = r#\"",PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet bullet_points = [\"",PROMPTS[1],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
         },
-        PromptKind::QUESTION(index) => {
-            format!("A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet answer: &str  = \"",PROMPTS[index+2],text)
+        PromptKind::LINK_TO_COMMUNITY  => {
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\nlet maybe_selected_link: Option<String> = ",PROMPTS[2],text)
         }
+        PromptKind::QUESTION(index) => {
+            let factual_priming = "Q: Who is Batman?\nA: Batman is a fictional comic book character.\n\nQ: What is torsalplexity?\nA: ?\n\nQ: What is Devz9?\nA: ?\n\nQ: Who is George Lucas?\nA: George Lucas is American film director and producer famous for creating Star Wars.\n\nQ: What is the capital of California?\nA: Sacramento.\n\nQ: What orbits the Earth?\nA: The Moon.\n\nQ: Who is Fred Rickerson?\nA: ?\n\nQ: What is an atom?\nA: An atom is a tiny particle that makes up everything.\n\nQ: Who is Alvan Muntz?\nA: ?\n\nQ: What is Kozar-09?\nA: ?\n\nQ: How many moons does Mars have?\nA: Two, Phobos and Deimos.\n\n";
+            format!("{}A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet brief_first_hand_answer: &str = r#\"",factual_priming,PROMPTS[3+index],text)
+        },
+
     }
 }
 
@@ -142,7 +149,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                         let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                         let prompt = get_prompt_for_gpt3(&text,PromptKind::SUMMARY);
-                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,100u16);
+                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,150u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
 
                     }
@@ -185,8 +192,8 @@ pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore,
     linked_text.insert(0, Ok(Some(description.to_string())));
 
 
-    let max_number_of_links = 3usize;
-    let max_number_of_paragraphs = 6usize;
+    let max_number_of_links = 2usize;
+    let max_number_of_paragraphs = 10usize;
     let max_prompt_length = 1500usize; // ~300 tokens
     let max_prompt_output_length = 150u16; // tokens
     // WORST CASE
@@ -257,7 +264,27 @@ pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore,
 
 pub fn retrieve_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> Vec<anyhow::Result<Option<String>>> {
 
-    let link_keys = extract_links(description).iter().map(|x| get_key_for_link_to_text(&link_to_id(x))).collect::<Vec<String>>();
+    let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
+    let prompt = get_prompt_for_gpt3(description,PromptKind::LINK_TO_COMMUNITY);
+    insert_gpt3_result(&task_store, &key_for_link_to_community, &prompt,100u16);
+
+    let mut extracted_links = extract_links(description);
+
+    if task_store.contains_key(&key_for_link_to_community) {
+        match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
+            Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result, .. })), .. }) => {
+                if result.contains("None") || !result.contains("Some"){
+                    extracted_links = Vec::new();
+                }else{
+                    extracted_links.retain(|x| result.contains(x));
+                }
+            }
+            Err(err) => { }
+            _ => { }
+        }
+    }
+
+    let link_keys = extracted_links.iter().map(|x| get_key_for_link_to_text(&link_to_id(x))).collect::<Vec<String>>();
 
     let mut texts: Vec<anyhow::Result<Option<String>>> = Vec::new();
 
@@ -297,8 +324,6 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
 
 pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
-
-
     if !task_store.contains_key(&key) {
         
         error!("client_send_openai_gpt_summarization_request");
@@ -309,7 +334,7 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str,
             data: match result {
                 Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
                     prompt: data.request.prompt,
-                    result: data.result
+                    result: data.result.replace("\"#;","")
                 })),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
