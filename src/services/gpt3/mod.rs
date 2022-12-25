@@ -70,17 +70,17 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet brief_overview: &str  = r#\"",PROMPTS[0],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_overview: &str  = r#\"",PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
             format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
         }
         PromptKind::QUESTION(index) => {
             let factual_priming = "Q: Who is Batman?\nA: Batman is a fictional comic book character.\n\nQ: What is torsalplexity?\nA: ?\n\nQ: What is Devz9?\nA: ?\n\nQ: Who is George Lucas?\nA: George Lucas is American film director and producer famous for creating Star Wars.\n\nQ: What is the capital of California?\nA: Sacramento.\n\nQ: What orbits the Earth?\nA: The Moon.\n\nQ: Who is Fred Rickerson?\nA: ?\n\nQ: What is an atom?\nA: An atom is a tiny particle that makes up everything.\n\nQ: Who is Alvan Muntz?\nA: ?\n\nQ: What is Kozar-09?\nA: ?\n\nQ: How many moons does Mars have?\nA: Two, Phobos and Deimos.\n\n";
-            format!("{}A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet brief_first_hand_answer: &str = r#\"",factual_priming,PROMPTS[3+index],text)
+            format!("{}A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_first_hand_answer: &str = r#\"",factual_priming,PROMPTS[3+index],text)
         },
 
     }
@@ -191,9 +191,9 @@ pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore,
 
 
     let max_number_of_links = 2usize;
-    let max_number_of_paragraphs = 10usize;
-    let max_prompt_length = 1500usize; // ~300 tokens
-    let max_prompt_output_length = 150u16; // tokens
+    let max_number_of_paragraphs = 2usize;
+    let max_prompt_length = 8000usize; // ~2000 tokens
+    let max_prompt_output_length = 1000u16; // tokens
     // WORST CASE
     // max_number_of_links X max_number_of_paragraphs X (max_prompt_length + output tokens)
     // currently --> 6300 tokens total
@@ -332,7 +332,7 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str,
             data: match result {
                 Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
                     prompt: data.request.prompt,
-                    result: data.result.replace("\"#;","")
+                    result: data.result.replace("\"#;","").replace("\n#","")
                 })),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
