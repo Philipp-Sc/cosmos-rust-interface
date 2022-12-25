@@ -70,17 +70,17 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet brief_overview: &str  = r#\"",PROMPTS[0],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet brief_overview: &str  = r#\"",PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\nlet maybe_selected_link: Option<String> = ",PROMPTS[2],text)
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
         }
         PromptKind::QUESTION(index) => {
             let factual_priming = "Q: Who is Batman?\nA: Batman is a fictional comic book character.\n\nQ: What is torsalplexity?\nA: ?\n\nQ: What is Devz9?\nA: ?\n\nQ: Who is George Lucas?\nA: George Lucas is American film director and producer famous for creating Star Wars.\n\nQ: What is the capital of California?\nA: Sacramento.\n\nQ: What orbits the Earth?\nA: The Moon.\n\nQ: Who is Fred Rickerson?\nA: ?\n\nQ: What is an atom?\nA: An atom is a tiny particle that makes up everything.\n\nQ: Who is Alvan Muntz?\nA: ?\n\nQ: What is Kozar-09?\nA: ?\n\nQ: How many moons does Mars have?\nA: Two, Phobos and Deimos.\n\n";
-            format!("{}A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet brief_first_hand_answer: &str = r#\"",factual_priming,PROMPTS[3+index],text)
+            format!("{}A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>// rust\nlet brief_first_hand_answer: &str = r#\"",factual_priming,PROMPTS[3+index],text)
         },
 
     }
