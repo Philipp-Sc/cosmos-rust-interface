@@ -196,22 +196,9 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                             }
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing3" {
-                                            if let Some(command) = custom_data.command("briefing5"){
-                                                navigation.push(
-                                                    vec![("How will it be funded?".to_string(), command)],
-                                                );
-                                            }
-
-                                            buttons.push(navigation);
+                                            
                                         } else if &query_part.display == "briefing4" {
 
-                                            if let Some(command) = custom_data.command("briefing6"){
-                                                navigation.push(
-                                                    vec![("How will it be implemented?".to_string(), command)],
-                                                );
-                                            }
-
-                                            buttons.push(navigation);
                                         } else if &query_part.display == "briefing5" {
 
                                         } else if &query_part.display == "content" {

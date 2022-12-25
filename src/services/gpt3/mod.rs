@@ -46,15 +46,13 @@ How would the proposal be implemented? What technical changes would be required,
 */
 
 
-const PROMPTS: [&str;8] = [
+const PROMPTS: [&str;6] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
             "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
             "The the link that leads to the community discussion / post / forum / thread for this proposal (if none of the links fit return None).",
             "Why is this proposal important?",
             "What are the stated benefits or effects?",
             "What are the stated risks or downsides?",
-            "What is mentioned regarding the funding? ",
-            "What stated steps are required to implement this proposal?"
                ];
 
 pub enum PromptKind {
@@ -142,7 +140,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::QUESTION(i));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
+                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 300u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                         }
