@@ -69,7 +69,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 for i in 0..10 {
                     let gpt3_result_briefing = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { text, prompt, result })), timestamp }) => {
+                        Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result,.. })), timestamp }) => {
                             Some(result)
                         }
                         Err(_) => { None }
