@@ -141,7 +141,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         }
 
                         let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
-                        let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::SUMMARY);
+                        let prompt = get_prompt_for_gpt3(&text,PromptKind::SUMMARY);
                         let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,100u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
 
