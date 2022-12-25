@@ -74,7 +74,6 @@ pub struct GPT3ResultStatus {
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
 pub struct GPT3Result {
-    pub text: String,
     pub prompt: String,
     pub result: String,
 }

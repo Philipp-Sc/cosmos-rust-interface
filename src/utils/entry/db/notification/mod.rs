@@ -177,50 +177,42 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                         } else if &query_part.display == "briefing0" {
                                             if let Some(command) = custom_data.command("briefing1"){
                                                 navigation.push(
-                                                    vec![("What problem is it attempting to solve, and how does it propose to do so?".to_string(), command)],
+                                                    vec![("What problem is it solving?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing1" {
                                             if let Some(command) = custom_data.command("briefing2"){
                                                 navigation.push(
-                                                    vec![("What are the potential benefits of the proposal?".to_string(), command)],
+                                                    vec![("What are the benefits?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing2" {
                                             if let Some(command) = custom_data.command("briefing3"){
                                                 navigation.push(
-                                                    vec![("What are the potential risks or downsides of the proposal?".to_string(), command)],
+                                                    vec![("What are the risks or downsides?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing3" {
-                                            if let Some(command) = custom_data.command("briefing4"){
+                                            if let Some(command) = custom_data.command("briefing5"){
                                                 navigation.push(
-                                                    vec![("Who is behind the proposal?".to_string(), command)],
+                                                    vec![("How will it be funded?".to_string(), command)],
                                                 );
                                             }
 
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing4" {
-                                            if let Some(command) = custom_data.command("briefing5"){
+
+                                            if let Some(command) = custom_data.command("briefing6"){
                                                 navigation.push(
-                                                    vec![("How would the proposal be funded?".to_string(), command)],
+                                                    vec![("How will it be implemented?".to_string(), command)],
                                                 );
                                             }
 
                                             buttons.push(navigation);
                                         } else if &query_part.display == "briefing5" {
-
-                                            if let Some(command) = custom_data.command("briefing6"){
-                                                navigation.push(
-                                                    vec![("How would the proposal be implemented?".to_string(), command)],
-                                                );
-                                            }
-
-                                            buttons.push(navigation);
-                                        } else if &query_part.display == "briefing6" {
 
                                         } else if &query_part.display == "content" {
 

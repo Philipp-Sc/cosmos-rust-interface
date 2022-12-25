@@ -4,8 +4,8 @@ use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3Result, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
-use rust_openai_gpt_tools_socket_ipc::ipc::client_send_openai_gpt_summarization_request;
-use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTSummarizationResult;
+use rust_openai_gpt_tools_socket_ipc::ipc::client_send_openai_gpt_text_completion_request;
+use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTTextCompletionResult;
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
 
@@ -45,19 +45,40 @@ How would the proposal be implemented? What technical changes would be required,
 
 */
 
-const SUMMARY_PROMPT: &str ="Provide a brief overview of the motivation or purpose behind this governance proposal. Tweet.";
 
-const PROMPTS: [&str;6] = [
+const PROMPTS: [&str;7] = [
+            "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
+            "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
             "What problem is it attempting to solve, and how does it propose to do so?",
             "What are the potential benefits of the proposal? How will it improve the operation of the cryptocurrency or blockchain in question?",
             "What are the potential risks or downsides of the proposal? What unintended consequences might it have, and how might these be mitigated?",
-            "Who is behind the proposal? What is their background and experience in the crypto space, and what is their motivation for making the proposal?",
             "How would the proposal be funded? Would it require the allocation of new tokens, or the use of existing funds?",
             "How would the proposal be implemented? What technical changes would be required, and how would they be implemented?"
                ];
 
+pub enum PromptKind {
+    SUMMARY,
+    BULLET_POINTS,
+    QUESTION(usize),
+
+}
+
 pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
     format!("{}_{}_{}",GPT3_PREFIX, prompt_id, hash)
+}
+
+pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
+    match prompt_kind {
+        PromptKind::SUMMARY => {
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet brief_overview: &str  = r#\"",PROMPTS[0],text)
+        },
+        PromptKind::BULLET_POINTS => {
+            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet bullet_points = [\"",PROMPTS[1],text)
+        },
+        PromptKind::QUESTION(index) => {
+            format!("A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n// rust\nlet answer: &str  = \"",PROMPTS[index+2],text)
+        }
+    }
 }
 
 pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
@@ -110,17 +131,18 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                             // for now top-down selection until size limit reached
                             // TODO: use embedding to filter points specifically for different prompts.
 
-                            for i in 0..PROMPTS.len() {
+                            for i in 0..5 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &bullet_point_text, PROMPTS[i], 100u16);
+                                let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::QUESTION(i));
+                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                         }
-                        
-                        // get the summary
+
                         let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
-                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &text, SUMMARY_PROMPT,100u16);
+                        let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::SUMMARY);
+                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,100u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
 
                     }
@@ -204,7 +226,8 @@ pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore,
 
                 for each in &size_limited_paragraphs {
                     let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
-                    insert_gpt3_result(&task_store, &key_for_hash, each, "This is a summary in the form of concise bullet points (= key points,highlights,key takeaways,key ideas,key messages).", max_prompt_output_length);
+                    let prompt = get_prompt_for_gpt3(&each,PromptKind::BULLET_POINTS);
+                    insert_gpt3_result(&task_store, &key_for_hash, &prompt,  max_prompt_output_length);
                 }
 
                 for each in &size_limited_paragraphs {
@@ -272,20 +295,19 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     return false;
 }
 
-pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, text: &str, prompt: &str, completion_token_limit: u16) -> bool {
+pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
 
 
     if !task_store.contains_key(&key) {
         
         error!("client_send_openai_gpt_summarization_request");
-        let result: anyhow::Result<OpenAIGPTSummarizationResult> = client_send_openai_gpt_summarization_request("./tmp/rust_openai_gpt_tools_socket", text.to_owned(), prompt.to_owned(),completion_token_limit);
+        let result: anyhow::Result<OpenAIGPTTextCompletionResult> = client_send_openai_gpt_text_completion_request("./tmp/rust_openai_gpt_tools_socket", prompt.to_owned(), completion_token_limit);
         error!("OpenAIGPTSummarizationResult: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
                 Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
-                    text: data.request.text,
                     prompt: data.request.prompt,
                     result: data.result
                 })),
