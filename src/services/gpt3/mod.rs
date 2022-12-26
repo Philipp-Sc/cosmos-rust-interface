@@ -9,42 +9,40 @@ use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTTextCompletionResult;
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
 
+// better approach idea:
+
+
+// for each task:
+
+// go over whole text, split by \n, or by sentence?!
+
+// -> each sentence gets an embedding.
+// -> sort by distance to question
+
+// hopefully this method will censor unimportant text, and reduce the text that way.
 
 const GPT3_PREFIX: &str = "GPT3";
 
-const BIAS: &str = "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown.";
+const BIAS: &str = "You are an intelligent, informed, helpful and truthful chat bot.";
 
 const PROMPTS: [&str;3] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
-            "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
-            "The the link that leads to the community discussion / post / forum / thread for this proposal (if none of the links fit return None).",
+            "A list of the governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
+            "The link that leads to the community discussion/forum for this proposal (if none of the links fit return None).",
                ];
 
 const QUESTIONS: [&str;2] = [
-    "Why is this proposal important?",
-    "What are the potential risks or downsides?",
-];
-
-const QUESTIONS_VAR: [&str;2] = [
-    "proposal_importance",
-    "proposal_risks_and_downsides",
+    "Why is this proposal important? (In one sentence)",
+    "What are the potential risks or downsides? (In one sentence)",
 ];
 
 const COMMUNITY_NOTES: [&str;6] = [
-    "Feasibility and technical viability",
-    "Economic impact",
-    "Legal and regulatory compliance",
-    "Long-term sustainability",
-    "Transparency & Accountability",
-    "Community Support",
-];
-const COMMUNITY_NOTES_VAR: [&str;6] = [
-    "proposal_feasibility_and_technical_viability",
-    "proposal_economic_impact",
-    "proposal_legal_and_regulatory_compliance",
-    "proposal_long_term_sustainability",
-    "proposal_transparency_and_accountability",
-    "proposal_community_support",
+    "Feasibility and technical viability (In one sentence)",
+    "Economic impact (In one sentence)",
+    "Legal and regulatory compliance (In one sentence)",
+    "Long-term sustainability (In one sentence)",
+    "Transparency & Accountability (In one sentence)",
+    "Community Support (In one sentence)",
 ];
 
 pub enum PromptKind {
@@ -63,19 +61,19 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
-            format!("{}\n\n{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_overview: &str  = r#\"",BIAS,PROMPTS[0],text)
+            format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",BIAS,PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("{}\n\n{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
+            format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
+            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
         }
         PromptKind::QUESTION(index) => {
-            format!("{}\n\nA string containing the best answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let a_few_sentences_on_{}: &str = r#\"",BIAS,QUESTIONS[index],QUESTIONS_VAR[index],text)
+            format!("<instruction>{}\n\nA string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,QUESTIONS[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("{}\n\nA string containing the best community note: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let one_sentence_on_{}: &str = r#\"",BIAS,COMMUNITY_NOTES[index],COMMUNITY_NOTES_VAR[index],text)
+            format!("<instruction>{}\n\nA string containing the {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,COMMUNITY_NOTES[index],text)
         }
     }
 }
