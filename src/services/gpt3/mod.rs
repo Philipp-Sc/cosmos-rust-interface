@@ -9,6 +9,8 @@ use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTTextCompletionResult;
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
 
+
+// note this could be done on bullet points, or summaries. as well as just the original text.
 // better approach idea:
 
 
@@ -23,7 +25,7 @@ use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, lin
 
 const GPT3_PREFIX: &str = "GPT3";
 
-const BIAS: &str = "You are an intelligent, informed, helpful and truthful chat bot.";
+const BIAS: &str = "This is an intelligent, informed and concise AI.";
 
 const PROMPTS: [&str;3] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
@@ -32,17 +34,17 @@ const PROMPTS: [&str;3] = [
                ];
 
 const QUESTIONS: [&str;2] = [
-    "Why is this proposal important? (In one sentence)",
-    "What are the potential risks or downsides? (In one sentence)",
+    "Why is this proposal important? (only one sentence!)",
+    "What are the potential risks or downsides? (only one sentence!)",
 ];
 
 const COMMUNITY_NOTES: [&str;6] = [
-    "Feasibility and technical viability (In one sentence)",
-    "Economic impact (In one sentence)",
-    "Legal and regulatory compliance (In one sentence)",
-    "Long-term sustainability (In one sentence)",
-    "Transparency & Accountability (In one sentence)",
-    "Community Support (In one sentence)",
+    "Feasibility and technical viability (only one sentence!)",
+    "Economic impact (only one sentence!)",
+    "Legal and regulatory compliance (only one sentence!)",
+    "Long-term sustainability (only one sentence!)",
+    "Transparency & Accountability (only one sentence!)",
+    "Community Support (only one sentence!)",
 ];
 
 pub enum PromptKind {
@@ -67,13 +69,41 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
-            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
+            let distance = 200;
+            let mut result = String::new();
+            let links = extract_links(text);
+
+            let mut last_link_end = 0;
+            for link in &links {
+                let mut split = text.split(link);
+                let before_link = split.next().unwrap_or("");
+                let after_link = split.next().unwrap_or("");
+
+                let before_start = if before_link.len() > distance {
+                    before_link.len() - distance
+                } else {
+                    0
+                };
+                let after_end = if after_link.len() > distance {
+                    distance
+                } else {
+                    after_link.len()
+                };
+
+                result.push_str(&before_link[before_start..]);
+                result.push_str(link);
+                result.push_str(&after_link[..after_end]);
+                last_link_end += before_link.len() + link.len();
+            }
+            result.push_str(&text[last_link_end..]);
+
+            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
-            format!("<instruction>{}\n\nA string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,QUESTIONS[index],text)
+            format!("<instruction>{}\n\nA short message containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,QUESTIONS[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("<instruction>{}\n\nA string containing the {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,COMMUNITY_NOTES[index],text)
+            format!("<instruction>{}\n\nA short message containing the {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,COMMUNITY_NOTES[index],text)
         }
     }
 }
@@ -331,7 +361,7 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str,
             data: match result {
                 Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
                     prompt: data.request.prompt,
-                    result: data.result.replace("\"#;","").replace("\n#","")
+                    result: data.result.replace("\"#;","").replace("\n#","").replace(". #;","")
                 })),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
