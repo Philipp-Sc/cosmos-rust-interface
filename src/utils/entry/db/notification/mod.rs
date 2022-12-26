@@ -174,28 +174,52 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                             */
 
                                             // who voted how?
-                                        } else if &query_part.display == "briefing0" {
+                                        } else if &query_part.display == "briefing0" { // summary
                                             if let Some(command) = custom_data.command("briefing1"){
                                                 navigation.push(
                                                     vec![("What problem is it solving?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
-                                        } else if &query_part.display == "briefing1" {
+                                        } else if &query_part.display == "briefing1" { // why is it important?
                                             if let Some(command) = custom_data.command("briefing2"){
-                                                navigation.push(
-                                                    vec![("What are the benefits?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-                                        } else if &query_part.display == "briefing2" {
-                                            if let Some(command) = custom_data.command("briefing3"){
                                                 navigation.push(
                                                     vec![("What are the risks or downsides?".to_string(), command)],
                                                 );
                                             }
                                             buttons.push(navigation);
-                                        } else if &query_part.display == "briefing3" {
+                                        }  else if &query_part.display == "briefing2" { // risk and downsides
+
+                                            if let Some(command) = custom_data.command("briefing3"){
+                                                navigation.push(
+                                                    vec![("🛠️ Feasibility and technical viability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing4"){
+                                                navigation.push(
+                                                    vec![("💸 Economic impact".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing5"){
+                                                navigation.push(
+                                                    vec![("⚖️ Legal and regulatory compliance".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing6"){
+                                                navigation.push(
+                                                    vec![("🌿 Long-term sustainability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing7"){
+                                                navigation.push(
+                                                    vec![("🔎 Transparency & Accountability".to_string(), command)],
+                                                );
+                                            }
+                                            if let Some(command) = custom_data.command("briefing8"){
+                                                navigation.push(
+                                                    vec![("👥 Community Support".to_string(), command)],
+                                                );
+                                            }
 
                                         } else if &query_part.display == "briefing4" {
 
@@ -204,7 +228,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                         } else if &query_part.display == "content" {
 
                                         }
-
 
                                     }else{
                                         buttons.push(vec![]);
@@ -221,7 +244,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 insert_notify(db, msg.to_owned(), buttons.clone(), user_hash);
                             }
                         }
-
                     }
                 }
             };
