@@ -69,11 +69,10 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
-            let distance = 200;
+            let distance = 100;
             let mut result = String::new();
             let links = extract_links(text);
 
-            let mut last_link_end = 0;
             for link in &links {
                 let mut split = text.split(link);
                 let before_link = split.next().unwrap_or("");
@@ -93,9 +92,7 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
                 result.push_str(&before_link[before_start..]);
                 result.push_str(link);
                 result.push_str(&after_link[..after_end]);
-                last_link_end += before_link.len() + link.len();
             }
-            result.push_str(&text[last_link_end..]);
 
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
