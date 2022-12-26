@@ -12,6 +12,8 @@ use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, lin
 
 const GPT3_PREFIX: &str = "GPT3";
 
+const BIAS: &str = "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown.";
+
 const PROMPTS: [&str;3] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
             "This is a list of the following governance proposal summarized  in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
@@ -23,13 +25,26 @@ const QUESTIONS: [&str;2] = [
     "What are the potential risks or downsides?",
 ];
 
+const QUESTIONS_VAR: [&str;2] = [
+    "proposal_importance",
+    "proposal_risks_and_downsides",
+];
+
 const COMMUNITY_NOTES: [&str;6] = [
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Feasibility and technical viability",
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Economic impact",
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Legal and regulatory compliance",
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Long-term sustainability",
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Transparency & Accountability",
-    "Community Notes aim to create a better informed world by empowering people to collaboratively add context to potentially misleading proposals. Contributors can leave notes on proposal and if enough contributors from different points of view rate that note as helpful, the note will be publicly shown. Following is a truthful note for this proposal on Community Support",
+    "Feasibility and technical viability",
+    "Economic impact",
+    "Legal and regulatory compliance",
+    "Long-term sustainability",
+    "Transparency & Accountability",
+    "Community Support",
+];
+const COMMUNITY_NOTES_VAR: [&str;6] = [
+    "proposal_feasibility_and_technical_viability",
+    "proposal_economic_impact",
+    "proposal_legal_and_regulatory_compliance",
+    "proposal_long_term_sustainability",
+    "proposal_transparency_and_accountability",
+    "proposal_community_support",
 ];
 
 pub enum PromptKind {
@@ -48,19 +63,19 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_overview: &str  = r#\"",PROMPTS[0],text)
+            format!("{}\n\n{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_overview: &str  = r#\"",BIAS,PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
+            format!("{}\n\n{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
             format!("{}\n\n<governance proposal>{}</governance proposal>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],text)
         }
         PromptKind::QUESTION(index) => {
-            format!("A string containing the answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let brief_first_hand_answer: &str = r#\"",QUESTIONS[index],text)
+            format!("{}\n\nA string containing the best answer to Q: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let a_few_sentences_on_{}: &str = r#\"",BIAS,QUESTIONS[index],QUESTIONS_VAR[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("A string containing the community note:: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let community_note: &str = r#\"",COMMUNITY_NOTES[index],text)
+            format!("{}\n\nA string containing the best community note: {}\n\n<governance proposal>{}</governance proposal>\n\n<result>let one_sentence_on_{}: &str = r#\"",BIAS,COMMUNITY_NOTES[index],COMMUNITY_NOTES_VAR[index],text)
         }
     }
 }
