@@ -97,10 +97,10 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
-            format!("<instruction>{}\n\nA short message containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,QUESTIONS[index],text)
+            format!("<instruction>{}\n\nA string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",BIAS,QUESTIONS[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("<instruction>{}\n\nA short message containing the {}\n\n</instruction><source>{}</source>\n\n<result>let first_hand_account: &str = r#\"",BIAS,COMMUNITY_NOTES[index],text)
+            format!("<instruction>{}\n\nA string containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",BIAS,COMMUNITY_NOTES[index],text)
         }
     }
 }
@@ -159,21 +159,21 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::QUESTION(i));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 200u16);
+                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                             for i in 0..6 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1 + 2));
                                 let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::COMMUNITY_NOTE(i));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 200u16);
+                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                         }
 
                         let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                         let prompt = get_prompt_for_gpt3(&text,PromptKind::SUMMARY);
-                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,150u16);
+                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,100u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
 
                     }
@@ -359,6 +359,7 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str,
                 Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
                     prompt: data.request.prompt,
                     result: data.result.replace("\"#;","").replace("\n#","").replace(". #;","")
+                    // if string to long, to many sentences. then cut them of after completion.
                 })),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
