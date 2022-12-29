@@ -1,16 +1,32 @@
+use std::cmp::Ordering;
+use std::collections::HashSet;
 use chrono::Utc;
 use log::{debug, error, info};
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
-use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3Result, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
-use rust_openai_gpt_tools_socket_ipc::ipc::client_send_openai_gpt_text_completion_request;
-use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTTextCompletionResult;
+use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
+use rust_openai_gpt_tools_socket_ipc::ipc::{client_send_openai_gpt_embedding_request, client_send_openai_gpt_text_completion_request, OpenAIGPTResult};
+use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTTextCompletionResult,OpenAIGPTEmbeddingResult};
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
 
+use nnsplit::NNSplitOptions;
+use nnsplit::tract_backend::NNSplit;
+use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
 
 // note this could be done on bullet points, or summaries. as well as just the original text.
+// bullet points are to inconherent, TODO: remove bullet points, and use embeddings to reduce the text.
+
+// TODO: 1) for each text-document split into sensible list: Vec<String> , "\n" or sentence, or something smarter
+// TODO: 2) generate embedding
+// TODO: 3) per prompt filter text-document content list: Vec<String> by embedding ranking to the query.
+
+// this keeps the text as it is, but removes unrelated text. this also reduces the price. as bullet points use a lot of prompts.
+// embedding is 50x cheaper
+// 100-200 tokens, just need smart text splitting.
+
+
 // better approach idea:
 
 
@@ -123,59 +139,35 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        let bullet_points_for_each = retrieve_paragraph_to_bullet_points_results(&task_store, &description);
-                        // Ok(None) -> something went wrong
-                        // Err(_) -> key not yet available
-                        // Ok(Some()) -> bullet point.
+                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description,"prompt"){
 
-                        // check if bullet_points contain Err(_) if yes, then continue.
+                            error!("PROMPT: {:?}",context);
 
-                        if bullet_points_for_each.iter().flatten().filter(|x| x.is_err()).count() == 0 {
-                            let mut bullet_point_text = String::new();
-                            for bullet_points in bullet_points_for_each {
-                                for bullet_point in bullet_points {
-                                    if let Ok(Some(bp)) = bullet_point {
-                                        let lines: Vec<String> = bp
-                                            .split_whitespace()
-                                            .map(|x| format!("{} ", x))
-                                            .collect();
-                                        for line in lines {
-                                            if !(bullet_point_text.len() + line.len() > 4 * 3500) {
-                                                bullet_point_text.push_str(&line);
-                                            } else {
-                                                break; // out of space for bullet points
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // TODO: use embedding api and order by distance, then take first n elements until full.
-                            // TODO: discourages duplicate / similar bullet points.
-                            // for now top-down selection until size limit reached
-                            // TODO: use embedding to filter points specifically for different prompts.
-
+/*
                             for i in 0..2 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
-                                let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::QUESTION(i));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
+                                let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                             for i in 0..6 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1 + 2));
-                                let prompt = get_prompt_for_gpt3(&bullet_point_text,PromptKind::COMMUNITY_NOTE(i));
-                                let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt, 100u16);
+                                let prompt = get_prompt_for_gpt3(&context,PromptKind::COMMUNITY_NOTE(i));
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
+
+ */
                         }
 
-                        let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
+/*
+                    let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                         let prompt = get_prompt_for_gpt3(&text,PromptKind::SUMMARY);
-                        let insert_result = insert_gpt3_result(&task_store, &key_for_hash, &prompt,100u16);
+                        let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                         insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
-
+*/
                     }
                 }
             },
@@ -207,123 +199,180 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
     }
 }
 
-pub fn retrieve_paragraph_to_bullet_points_results(task_store: &TaskMemoryStore, description: &str) -> Vec<Vec<anyhow::Result<Option<String>>>> {
 
 
-    let mut bullet_points_for_each: Vec<Vec<anyhow::Result<Option<String>>>> = Vec::new();
-
-    let mut linked_text = retrieve_link_to_text_results(&task_store,description);
-    linked_text.insert(0, Ok(Some(description.to_string())));
 
 
-    let max_number_of_links = 2usize;
-    let max_number_of_paragraphs = 2usize;
-    let max_prompt_length = 8000usize; // ~2000 tokens
-    let max_prompt_output_length = 1000u16; // tokens
-    // WORST CASE
-    // max_number_of_links X max_number_of_paragraphs X (max_prompt_length + output tokens)
-    // currently --> 6300 tokens total
-
-    // TAKE ONLY FIRST N LINKS (actually last N LINKS within proposal)
-    for i in 0..std::cmp::min(max_number_of_links,linked_text.len()) {
-
-            let mut bullet_points_for_text: Vec<anyhow::Result<Option<String>>> = Vec::new();
-
-            if let Ok(Some(text))= &linked_text[i] {
+pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, prompt_text: &str) -> anyhow::Result<String> {
 
 
-                let split_whitespace = text.split_whitespace()
-                    .map(|x| format!("{} ", x))
-                    .collect::<Vec<String>>();
+    let mut linked_text_result = retrieve_community_link_to_text_result(&task_store,description)?;
 
-                // now go over the split_paragraphs and build your string until size exhausted.
-                // this way the final string will end naturally most of the time.
+    let prompt_text_result =  LinkToTextResult{
+        link: prompt_text.to_string(),
+        text_nodes: vec![prompt_text.to_string()],
+        hierarchical_segmentation: vec![vec![true]]
+    };
 
-                let mut size_limited_paragraphs: Vec<String> = Vec::new();
+    let splitter = NNSplit::load(
+        "en",
+        NNSplitOptions::default(),
+    ).unwrap();
+    let split = &splitter.split(&[description])[0];
+    let sentences = split.flatten(0).iter().map(|x| x.to_string()).collect::<Vec<String>>();
+    let hierarchical_segmentation = vec![sentences.iter().map(|_| true).collect::<Vec<bool>>()];
 
-                let mut paragraph = String::new();
+    let description_text_result = LinkToTextResult::new(description,sentences,hierarchical_segmentation,300);
 
-                for word in split_whitespace {
-                    if paragraph.len() + word.len() > max_prompt_length {
-                        size_limited_paragraphs.push(paragraph);
-                        paragraph = String::new();
+    let mut linked_text = vec![prompt_text_result,description_text_result];
+    match linked_text_result {
+        Some(item) => {
+            linked_text.push(item);
+        },
+        _ => {}
+    };
+
+    let mut linked_text_embeddings = Vec::new();
+
+    for i in 0..linked_text.len() {
+
+        if let LinkToTextResult{text_nodes, hierarchical_segmentation ,..} = &linked_text[i] {
+
+            let key_for_hash = get_key_for_gpt3(string_to_hash(&text_nodes.join("")), "embedding");
+            if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, text_nodes.clone());
+
+            if task_store.contains_key(&key_for_hash) {
+                match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
+                    Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { result, .. }))), .. }) => {
+                        linked_text_embeddings.push(result);
                     }
-                    paragraph.push_str(&word);
-                }
-                size_limited_paragraphs.push(paragraph);
-
-                // TAKE ONLY FIRST N Paragraphs
-                size_limited_paragraphs = size_limited_paragraphs.into_iter().take(max_number_of_paragraphs).collect();
-
-                for each in &size_limited_paragraphs {
-                    let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
-                    let prompt = get_prompt_for_gpt3(&each,PromptKind::BULLET_POINTS);
-                    insert_gpt3_result(&task_store, &key_for_hash, &prompt,  max_prompt_output_length);
-                }
-
-                for each in &size_limited_paragraphs {
-                    let key_for_hash = get_key_for_gpt3(string_to_hash(each), "bullet_point");
-                    if task_store.contains_key(&key_for_hash) {
-                        match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
-                            Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result, .. })), .. }) => {
-                                bullet_points_for_text.push(Ok(Some(result)));
-                            }
-                            Err(err) => { bullet_points_for_text.push(Err(anyhow::anyhow!(err))); }
-                            _ => { bullet_points_for_text.push(Ok(None)); }
-                        }
+                    Ok(Maybe { data: Err(err), .. }) => {
+                        return Err(anyhow::anyhow!(err));
+                    }
+                    Err(err) => {
+                        return Err(anyhow::anyhow!(err));
+                    }
+                    _ => {
+                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
                     }
                 }
             }
-            else if let Err(err)= &linked_text[i] { // value not yet available
-                bullet_points_for_text.push(Err(anyhow::anyhow!(err.to_string())));
-            }
-           else if let Ok(None)= &linked_text[i] { // error case
-               bullet_points_for_text.push(Ok(None));
-            }
-        bullet_points_for_each.push(bullet_points_for_text);
+        }
     }
-    bullet_points_for_each
+
+    let prompt_embedding = linked_text_embeddings.remove(0);
+    linked_text.remove(0);
+
+    let mut similarities: Vec<Vec<f32>> = Vec::new();
+
+    for i in 0..linked_text_embeddings.len() { //  linked_text_embeddings[i] : Vec<Vec<f32>>
+        let mut document_similarities: Vec<f32> = Vec::new();
+        for ii in  0..linked_text_embeddings[i].len() { //  linked_text_embeddings[i][ii] : Vec<f32>
+            let mut sum_distance = 0f32;
+            for v in 0..prompt_embedding.len() {
+                let distance = cosine_similarity(&linked_text_embeddings[i][ii], &prompt_embedding[v]);
+                sum_distance = distance + sum_distance;
+            }
+            let average_distance = sum_distance / (prompt_embedding.len() as f32);
+            document_similarities.push(average_distance);
+        }
+        similarities.push(document_similarities);
+    }
+
+
+    let texts = linked_text.iter().map(|x| x.text_nodes.clone()).flatten().collect::<Vec<String>>();
+    let similarities = similarities.into_iter().flatten().collect::<Vec<f32>>();
+
+    let mut tuples = texts.into_iter().zip(similarities.into_iter()).enumerate().collect::<Vec<(usize,(String,f32))>>();
+
+    tuples.sort_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap_or(Ordering::Equal));
+
+    let mut my_selection = Vec::new();
+    let mut chars: usize = 0;
+
+    for i in 0..tuples.len(){
+        if tuples[i].1.0.len() + chars > 4*3500 {
+            break;
+        }else{
+            my_selection.push(&tuples[i]);
+            chars = tuples[i].1.0.len() + chars;
+        }
+    }
+    my_selection.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let result = my_selection.iter().map(|x| x.1.0.clone()).collect::<Vec<String>>().join("</next>");
+
+    Ok(result)
+
+}
+
+fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
+    let dot_product = vec1.iter().zip(vec2).map(|(x, y)| x * y).sum::<f32>();
+    let norm1 = vec1.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm2 = vec2.iter().map(|x| x * x).sum::<f32>().sqrt();
+    dot_product / (norm1 * norm2)
 }
 
 
-pub fn retrieve_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> Vec<anyhow::Result<Option<String>>> {
+pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Option<LinkToTextResult>> {
 
-    let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
-    let prompt = get_prompt_for_gpt3(description,PromptKind::LINK_TO_COMMUNITY);
-    insert_gpt3_result(&task_store, &key_for_link_to_community, &prompt,100u16);
+    let mut extracted_links: Vec<String> = extract_links(description);
 
-    let mut extracted_links = extract_links(description);
+    if !extracted_links.is_empty() {
 
-    if task_store.contains_key(&key_for_link_to_community) {
-        match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
-            Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result, .. })), .. }) => {
-                if result.contains("None") || !result.contains("Some"){
-                    extracted_links = Vec::new();
-                }else{
-                    extracted_links.retain(|x| result.contains(x));
+        let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
+        let prompt = get_prompt_for_gpt3(description, PromptKind::LINK_TO_COMMUNITY);
+        if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_link_to_community, &prompt, 100u16);
+
+        if task_store.contains_key(&key_for_link_to_community) {
+            match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
+                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(OpenAIGPTTextCompletionResult { result, .. }))), .. }) => {
+                    if result.contains("None") || !result.contains("Some") {
+                        extracted_links = Vec::new();
+                    } else {
+                        extracted_links.retain(|x| result.contains(x));
+                    }
+                }
+                Ok(Maybe { data: Err(err), .. }) => {
+                    return Err(anyhow::anyhow!(err));
+                }
+                Err(err) => {
+                    return Err(anyhow::anyhow!(err));
+                }
+                _ => {
+                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
                 }
             }
-            Err(err) => { }
-            _ => { }
         }
-    }
 
-    let link_keys = extracted_links.iter().map(|x| get_key_for_link_to_text(&link_to_id(x))).collect::<Vec<String>>();
+        if !extracted_links.is_empty() {
+            let link_key = get_key_for_link_to_text(&link_to_id(&extracted_links[0]));
 
-    let mut texts: Vec<anyhow::Result<Option<String>>> = Vec::new();
-
-    for link_key in link_keys {
-        if task_store.contains_key(&link_key) {
-            match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
-                Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(LinkToTextResult { link, text, .. })), .. }) => {
-                     texts.push(Ok(Some(text)));
+            if task_store.contains_key(&link_key) {
+                match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
+                    Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
+                        Ok(Some(link_to_text_result))
+                    }
+                    Ok(Maybe { data: Err(err), .. }) => {
+                        Err(anyhow::anyhow!(err))
+                    }
+                    Err(err) => {
+                        Err(anyhow::anyhow!(err))
+                    }
+                    _ => {
+                        Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."))
+                    }
                 }
-                Err(err) => { texts.push(Err(anyhow::anyhow!(err))); }
-                _ => { texts.push(Ok(None)); }
+            } else {
+                Err(anyhow::anyhow!("Error: Unreachable: LinkToTextResult not found."))
             }
+        } else {
+            Ok(None)
         }
+    }else{
+        Ok(None)
     }
-    texts
+
 }
 
 pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> bool {
@@ -346,21 +395,17 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     return false;
 }
 
-pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str, completion_token_limit: u16) -> bool {
+pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store: &TaskMemoryStore, key: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
     if !task_store.contains_key(&key) {
         
-        error!("client_send_openai_gpt_summarization_request");
-        let result: anyhow::Result<OpenAIGPTTextCompletionResult> = client_send_openai_gpt_text_completion_request("./tmp/rust_openai_gpt_tools_socket", prompt.to_owned(), completion_token_limit);
-        error!("OpenAIGPTSummarizationResult: {:?}",result);
+        error!("client_send_openai_gpt_text_completion_request");
+        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_text_completion_request("./tmp/rust_openai_gpt_tools_socket", prompt.to_owned(), completion_token_limit);
+        error!("OpenAIGPTResult: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
-                Ok(data) => Ok(ResponseResult::GPT3Result(GPT3Result {
-                    prompt: data.request.prompt,
-                    result: data.result.replace("\"#;","").replace("\n#","").replace(". #;","")
-                    // if string to long, to many sentences. then cut them of after completion.
-                })),
+                Ok(data) => Ok(ResponseResult::OpenAIGPTResult(data)),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
             timestamp: Utc::now().timestamp(),
@@ -371,3 +416,26 @@ pub fn insert_gpt3_result(task_store: &TaskMemoryStore, key: &str, prompt: &str,
         false
     }
 }
+
+pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> bool {
+
+    if !task_store.contains_key(&key) {
+
+        error!("client_send_openai_gpt_embedding_request");
+        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
+        error!("OpenAIGPTResult: {:?}",result);
+
+        let result: Maybe<ResponseResult> = Maybe {
+            data: match result {
+                Ok(data) => Ok(ResponseResult::OpenAIGPTResult(data)),
+                Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
+            },
+            timestamp: Utc::now().timestamp(),
+        };
+        task_store.push(&key, result).ok();
+        true
+    }else{
+        false
+    }
+}
+

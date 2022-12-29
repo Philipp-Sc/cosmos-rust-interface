@@ -33,10 +33,11 @@ eyre = "0.6"
 rust-bert-fraud-detection-socket-ipc = { workspace = true, optional = true }
 rust-openai-gpt-tools-socket-ipc = { workspace = true, optional = true }
 rust-link-to-text-socket-ipc = { workspace = true, optional = true }
+nnsplit = { workspace = true, features= ["tract-backend","model-loader"], optional = true }
 #csv = "1.1.6" # temporary
 
 [features]
 default = ["interface","postproc","db"]
-interface = ["cosmos-rust-package","rust-bert-fraud-detection-socket-ipc","rust-openai-gpt-tools-socket-ipc","rust-link-to-text-socket-ipc"]
+interface = ["cosmos-rust-package","rust-bert-fraud-detection-socket-ipc","rust-openai-gpt-tools-socket-ipc","rust-link-to-text-socket-ipc","nnsplit"]
 postproc = ["cosmos-rust-package"]
 db = ["sled","bincode"]

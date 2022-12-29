@@ -5,11 +5,12 @@ use crate::utils::entry::*;
 use strum::IntoEnumIterator;
 use cosmos_rust_package::api::custom::query::gov::ProposalTime;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
-use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, GPT3Result, ProposalDataResult};
+use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, ProposalDataResult};
 
 use serde::{Deserialize,Serialize};
-use crate::services::fraud_detection::get_key_for_fraud_detection as fraud_detection_get_key_for_hash;
-use crate::services::gpt3::get_key_for_gpt3 as gpt3_get_key_for_hash;
+use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTResult, OpenAIGPTTextCompletionResult};
+use crate::services::fraud_detection::get_key_for_fraud_detection;
+use crate::services::gpt3::get_key_for_gpt3;
 
 
 const PROPOSAL_DATA_RESULT: &str = "ProposalDataResult";
@@ -57,7 +58,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 let hash = proposal.title_and_description_to_hash();
 
-                let fraud_classification = match task_store.get::<ResponseResult>(&fraud_detection_get_key_for_hash(hash),&RetrievalMethod::GetOk){
+                let fraud_classification = match task_store.get::<ResponseResult>(&get_key_for_fraud_detection(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, text, fraud_prediction })), timestamp }) => {
                         Some(fraud_prediction)
                     }
@@ -68,8 +69,8 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                 let mut briefings = Vec::new();
 
                 for i in 0..10 {
-                    let gpt3_result_briefing = match task_store.get::<ResponseResult>(&gpt3_get_key_for_hash(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::GPT3Result(GPT3Result { result,.. })), timestamp }) => {
+                    let gpt3_result_briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
+                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(OpenAIGPTTextCompletionResult { result, .. }))), .. }) => {
                             Some(result)
                         }
                         Err(_) => { None }

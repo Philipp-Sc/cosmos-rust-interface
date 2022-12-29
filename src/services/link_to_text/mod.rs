@@ -1,4 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::ptr::hash;
 use chrono::Utc;
@@ -24,7 +25,10 @@ pub fn extract_links(text: &str) -> Vec<String> {
     for link in links  {
         output.push(link.as_str().to_string());
     }
-    output.into_iter().rev().collect()
+    // Convert the vector to a HashSet
+    let set: HashSet<String> = output.into_iter().collect();
+    // Convert the HashSet back to a vector
+    set.into_iter().collect()
 }
 
 pub fn link_to_id(text: &String) -> String {
@@ -101,10 +105,7 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
-                Ok(data) => Ok(ResponseResult::LinkToTextResult(LinkToTextResult {
-                    link: link.to_string(),
-                    text: data.result,
-                })),
+                Ok(data) => Ok(ResponseResult::LinkToTextResult(LinkToTextResult::new(link,data.text_nodes,data.hierarchical_segmentation,300))),
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
             timestamp: Utc::now().timestamp(),
