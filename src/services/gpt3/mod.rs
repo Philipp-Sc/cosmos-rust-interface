@@ -225,7 +225,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     let description_text_result = LinkToTextResult::new(description,sentences,hierarchical_segmentation,300);
 
-    let mut linked_text = vec![prompt_text_result,description_text_result];
+    let mut linked_text = vec![description_text_result];
     match linked_text_result {
         Some(item) => {
             linked_text.push(item);
@@ -235,34 +235,58 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     let mut linked_text_embeddings = Vec::new();
 
-    for i in 0..linked_text.len() {
+    let mut prompt_embedding = Vec::new();
 
-        if let LinkToTextResult{text_nodes, hierarchical_segmentation ,..} = &linked_text[i] {
 
-            let key_for_hash = get_key_for_gpt3(string_to_hash(&text_nodes.join("")), "embedding");
-            if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, text_nodes.clone());
+    for chunk in prompt_text_result.text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
 
-            if task_store.contains_key(&key_for_hash) {
-                match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
-                    Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { result, .. }))), .. }) => {
-                        linked_text_embeddings.push(result);
-                    }
-                    Ok(Maybe { data: Err(err), .. }) => {
-                        return Err(anyhow::anyhow!(err));
-                    }
-                    Err(err) => {
-                        return Err(anyhow::anyhow!(err));
-                    }
-                    _ => {
+        let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk.join("")), "embedding");
+        if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, chunk);
+
+        if task_store.contains_key(&key_for_hash) {
+            match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
+                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { mut result, .. }))), .. }) => {
+                        prompt_embedding.append(&mut result);
+                }
+                Ok(Maybe { data: Err(err), .. }) => {
+                    return Err(anyhow::anyhow!(err));
+                }
+                Err(err) => {
+                    return Err(anyhow::anyhow!(err));
+                }
+                _ => {
                     return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
-                    }
                 }
             }
         }
     }
 
-    let prompt_embedding = linked_text_embeddings.remove(0);
-    linked_text.remove(0);
+    for i in 0..linked_text.len() {
+
+            for chunk in linked_text[i].text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
+
+                let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk.join("")), "embedding");
+                if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, chunk);
+
+                if task_store.contains_key(&key_for_hash) {
+                    match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
+                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { result, .. }))), .. }) => {
+                            linked_text_embeddings.push(result);
+                        }
+                        Ok(Maybe { data: Err(err), .. }) => {
+                            return Err(anyhow::anyhow!(err));
+                        }
+                        Err(err) => {
+                            return Err(anyhow::anyhow!(err));
+                        }
+                        _ => {
+                            return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
+                        }
+                    }
+                }
+            }
+    }
+
 
     let mut similarities: Vec<Vec<f32>> = Vec::new();
 
