@@ -41,6 +41,8 @@ use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
 
 const GPT3_PREFIX: &str = "GPT3";
 
+const TOPIC: [&str;1] = ["Governance proposals in the Cosmos blockchain ecosystem allow stakeholders to propose and vote on changes to the protocol, including modifications to the validator set, updates to the staking and reward mechanism, and the addition or removal of features. In order to effectively communicate the intended changes and their potential impact on the network, it is important to clearly outline the problem that the proposal aims to solve and provide a detailed description of the proposed solution. It may also be helpful to present relevant data or research to support the proposal, and to consider the broader implications of the proposal on the security, scalability, and decentralization of the network. Ultimately, the success of a governance proposal depends on the ability to clearly articulate the problem and solution and to persuade the community of the value and feasibility of the proposed changes."];
+
 const BIAS: &str = "This is an intelligent, informed and concise AI.";
 
 const PROMPTS: [&str;3] = [
@@ -64,6 +66,7 @@ const COMMUNITY_NOTES: [&str;6] = [
 ];
 
 pub enum PromptKind {
+    TOPIC_DESCRIPTION(usize),
     SUMMARY,
     BULLET_POINTS,
     QUESTION(usize),
@@ -78,6 +81,9 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
+        PromptKind::TOPIC_DESCRIPTION(index) => {
+            format!("about: {}",TOPIC[index])
+        }
         PromptKind::SUMMARY => {
             format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",BIAS,PROMPTS[0],text)
         },
@@ -135,16 +141,21 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                     let hash = each.title_and_description_to_hash();
 
                     if fraud_detection_result_is_ok(&task_store,hash) {
-
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        let r =  retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description,"Why is this governance proposal important? ");
-                        error!("Why is this proposal important? PROMPT:\n{:?}",r);
+                        let prompt = get_prompt_for_gpt3("", PromptKind::TOPIC_DESCRIPTION(0));
 
-                        if let Ok(context) = r {
+                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, &prompt) {
+                            error!("Why is this proposal important? PROMPT:\n{:?}",r);
 
-/*
+                            let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
+                            let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
+                            let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
+                            insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
+
+
+                            /*
                             for i in 0..2 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
@@ -159,16 +170,8 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
-
- */
+                            */
                         }
-
-/*
-                    let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
-                        let prompt = get_prompt_for_gpt3(&text,PromptKind::SUMMARY);
-                        let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
-                        insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result {Some(key_for_hash)}else {None});
-*/
                     }
                 }
             },
@@ -247,8 +250,6 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     }
 
 
-    error!("!!linked_text: {:?}",linked_text);
-
     for i in 0..linked_text.len() {
 
             for chunk in linked_text[i].text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
@@ -263,8 +264,6 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     }
     let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,String)>>();
 
-
-    error!("!!linked_text_embeddings: {:?}",linked_text_embeddings);
 
 
     let mut linked_text_embeddings = linked_text_embeddings.into_iter().map(|x| {
@@ -281,8 +280,6 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     linked_text_embeddings.sort_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal));
 
 
-    error!("!!linked_text_embeddings SORTED: {:?}",linked_text_embeddings);
-
     let mut my_selection = Vec::new();
     let mut chars: usize = 0;
 
@@ -296,15 +293,17 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         }
     }
 
-    error!("!!chars: {:?}",chars);
-
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
+    let mut result = String::new();
 
-    let result = my_selection.iter().map(|x| x.1.1.clone()).collect::<Vec<String>>().join("</next>");
-
+    for i in 0..my_selection.len(){
+        result.push_str(&my_selection[i].1.1);
+        if i + 1 < my_selection.len() && my_selection[i].0 + 1 !=  my_selection[i+1].0 {
+            result.push_str("<next-excerpt/>");
+        }
+    }
     Ok(result)
-
 }
 
 fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
