@@ -139,9 +139,10 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description,"Why is this governance proposal important? "){
+                        let r =  retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description,"Why is this governance proposal important? ");
+                        error!("Why is this proposal important? PROMPT:\n{:?}",r);
 
-                            error!("Why is this proposal important? PROMPT:\n{:?}",context);
+                        if let Ok(context) = r {
 
 /*
                             for i in 0..2 {
