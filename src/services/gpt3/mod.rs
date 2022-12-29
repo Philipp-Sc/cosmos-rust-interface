@@ -218,7 +218,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     let splitter = NNSplit::load(
         "en",
         NNSplitOptions::default(),
-    ).unwrap();
+    )?;
     let split = &splitter.split(&[description])[0];
     let sentences = split.flatten(0).iter().map(|x| x.to_string()).collect::<Vec<String>>();
     let hierarchical_segmentation = vec![sentences.iter().map(|_| true).collect::<Vec<bool>>()];
@@ -260,6 +260,10 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     }
     let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,String)>>();
 
+
+    error!("!!linked_text_embeddings: {:?}",linked_text_embeddings);
+
+
     let mut linked_text_embeddings = linked_text_embeddings.into_iter().map(|x| {
         let mut sum_distance = 0f32;
         for v in 0..prompt_embedding.len() {
@@ -274,6 +278,8 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     linked_text_embeddings.sort_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal));
 
 
+    error!("!!linked_text_embeddings SORTED: {:?}",linked_text_embeddings);
+
     let mut my_selection = Vec::new();
     let mut chars: usize = 0;
 
@@ -286,6 +292,8 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
             chars = char_count + chars;
         }
     }
+
+    error!("!!chars: {:?}",chars);
 
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
