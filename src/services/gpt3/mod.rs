@@ -218,7 +218,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     let splitter = NNSplit::load(
         "en",
         NNSplitOptions::default(),
-    )?;
+    ).unwrap();
     let split = &splitter.split(&[description])[0];
     let sentences = split.flatten(0).iter().map(|x| x.to_string()).collect::<Vec<String>>();
     let hierarchical_segmentation = vec![sentences.iter().map(|_| true).collect::<Vec<bool>>()];
