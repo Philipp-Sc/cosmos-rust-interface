@@ -147,7 +147,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let prompt = get_prompt_for_gpt3("", PromptKind::TOPIC_DESCRIPTION(0));
 
                         if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, &prompt) {
-                            error!("Why is this proposal important? PROMPT:\n{:?}",r);
+                            error!("CONTEXT:\n{:?}",context);
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                             let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
@@ -401,7 +401,7 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
         
         error!("client_send_openai_gpt_text_completion_request");
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_text_completion_request("./tmp/rust_openai_gpt_tools_socket", prompt.to_owned(), completion_token_limit);
-        error!("OpenAIGPTResult: {:?}",result);
+        error!("result: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
@@ -422,7 +422,7 @@ pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(ta
     if !task_store.contains_key(key) {
         error!("client_send_openai_gpt_embedding_request");
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
-        error!("client_send_openai_gpt_embedding_request: {:?}",result);
+        error!("result: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
