@@ -246,6 +246,9 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     }
 
+
+    error!("!!linked_text: {:?}",linked_text);
+
     for i in 0..linked_text.len() {
 
             for chunk in linked_text[i].text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
