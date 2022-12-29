@@ -147,7 +147,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let prompt = get_prompt_for_gpt3("", PromptKind::TOPIC_DESCRIPTION(0));
 
                         if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, &prompt) {
-                            error!("CONTEXT:\n{:?}",context);
+                            error!("CONTEXT for description:\n{:?}\n\n{:?}",description,context);
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                             let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
