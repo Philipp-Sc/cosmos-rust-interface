@@ -69,7 +69,7 @@ impl LinkToTextResult {
         let mut my_text_nodes: Vec<String> = Vec::new();
         let mut my_hierarchical_segmentation: Vec<Vec<(usize,bool)>> = hierarchical_segmentation.into_iter().map(|x| x.into_iter().map(|y| (1usize,y)).collect()).collect();
         for i in 0..text_nodes.len() {
-            if text_nodes[i].len() > sentence_char_limit {
+            if text_nodes[i].chars().count() > sentence_char_limit {
                 // TODO: can be improved by splitting sentences instead of whitespace. (NNSplit)
                 let mut split_whitespace = text_nodes[i].split_whitespace()
                     .map(|x| format!("{} ", x))
@@ -81,7 +81,7 @@ impl LinkToTextResult {
                 let mut paragraph = String::new();
 
                 for word in split_whitespace {
-                    if paragraph.len() + word.len() > sentence_char_limit {
+                    if paragraph.chars().count() + word.chars().count() > sentence_char_limit {
                         size_limited_paragraphs.push(paragraph);
                         paragraph = String::new();
                     }

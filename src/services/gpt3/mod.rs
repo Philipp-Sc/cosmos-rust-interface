@@ -241,91 +241,56 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     for chunk in prompt_text_result.text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
 
         let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk.join("")), "embedding");
-        if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, chunk);
+        let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, chunk)?;
+        prompt_embedding.append(&mut item.result);
 
-        if task_store.contains_key(&key_for_hash) {
-            match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
-                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { mut result, .. }))), .. }) => {
-                        prompt_embedding.append(&mut result);
-                }
-                Ok(Maybe { data: Err(err), .. }) => {
-                    return Err(anyhow::anyhow!(err));
-                }
-                Err(err) => {
-                    return Err(anyhow::anyhow!(err));
-                }
-                _ => {
-                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
-                }
-            }
-        }
     }
 
     for i in 0..linked_text.len() {
 
             for chunk in linked_text[i].text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
 
-                let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk.join("")), "embedding");
-                if_key_does_not_exist_insert_openai_gpt_embedding_result(&task_store, &key_for_hash, chunk);
+                let chunk_text = chunk.join("");
+                let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk_text), "embedding");
+                let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, chunk.clone())?;
 
-                if task_store.contains_key(&key_for_hash) {
-                    match task_store.get::<ResponseResult>(&key_for_hash, &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(OpenAIGPTEmbeddingResult { result, .. }))), .. }) => {
-                            linked_text_embeddings.push(result);
-                        }
-                        Ok(Maybe { data: Err(err), .. }) => {
-                            return Err(anyhow::anyhow!(err));
-                        }
-                        Err(err) => {
-                            return Err(anyhow::anyhow!(err));
-                        }
-                        _ => {
-                            return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
-                        }
-                    }
-                }
+                linked_text_embeddings.push(item.result.into_iter().zip(chunk.into_iter()).collect::<Vec<(Vec<f32>,String)>>());
+
             }
     }
+    let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,String)>>();
 
-
-    let mut similarities: Vec<Vec<f32>> = Vec::new();
-
-    for i in 0..linked_text_embeddings.len() { //  linked_text_embeddings[i] : Vec<Vec<f32>>
-        let mut document_similarities: Vec<f32> = Vec::new();
-        for ii in  0..linked_text_embeddings[i].len() { //  linked_text_embeddings[i][ii] : Vec<f32>
-            let mut sum_distance = 0f32;
-            for v in 0..prompt_embedding.len() {
-                let distance = cosine_similarity(&linked_text_embeddings[i][ii], &prompt_embedding[v]);
-                sum_distance = distance + sum_distance;
-            }
-            let average_distance = sum_distance / (prompt_embedding.len() as f32);
-            document_similarities.push(average_distance);
+    let mut linked_text_embeddings = linked_text_embeddings.into_iter().map(|x| {
+        let mut sum_distance = 0f32;
+        for v in 0..prompt_embedding.len() {
+            let distance = cosine_similarity(&x.0, &prompt_embedding[v]);
+            sum_distance = distance + sum_distance;
         }
-        similarities.push(document_similarities);
-    }
+        let average_distance = sum_distance / (prompt_embedding.len() as f32);
+        (average_distance,x.1)
+    }).enumerate().collect::<Vec<(usize,(f32,String))>>();
 
 
-    let texts = linked_text.iter().map(|x| x.text_nodes.clone()).flatten().collect::<Vec<String>>();
-    let similarities = similarities.into_iter().flatten().collect::<Vec<f32>>();
+    linked_text_embeddings.sort_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal));
 
-    let mut tuples = texts.into_iter().zip(similarities.into_iter()).enumerate().collect::<Vec<(usize,(String,f32))>>();
-
-    tuples.sort_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap_or(Ordering::Equal));
 
     let mut my_selection = Vec::new();
     let mut chars: usize = 0;
 
-    for i in 0..tuples.len(){
-        if tuples[i].1.0.len() + chars > 4*3500 {
+    for i in 0..linked_text_embeddings.len(){
+        let char_count = linked_text_embeddings[i].1.1.chars().count();
+        if char_count + chars > 4*3500 {
             break;
         }else{
-            my_selection.push(&tuples[i]);
-            chars = tuples[i].1.0.len() + chars;
+            my_selection.push(&linked_text_embeddings[i]);
+            chars = char_count + chars;
         }
     }
+
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
-    let result = my_selection.iter().map(|x| x.1.0.clone()).collect::<Vec<String>>().join("</next>");
+
+    let result = my_selection.iter().map(|x| x.1.1.clone()).collect::<Vec<String>>().join("</next>");
 
     Ok(result)
 
@@ -442,13 +407,12 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
     }
 }
 
-pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> bool {
+pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> anyhow::Result<OpenAIGPTEmbeddingResult> {
 
-    if !task_store.contains_key(&key) {
-
+    if !task_store.contains_key(key) {
         error!("client_send_openai_gpt_embedding_request");
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
-        error!("OpenAIGPTResult: {:?}",result);
+        error!("client_send_openai_gpt_embedding_request: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
@@ -457,10 +421,22 @@ pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result(task_store: &Tas
             },
             timestamp: Utc::now().timestamp(),
         };
-        task_store.push(&key, result).ok();
-        true
-    }else{
-        false
+        task_store.push(key, result)?;
     }
+    match task_store.get::<ResponseResult>(key, &RetrievalMethod::GetOk) {
+        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(embedding_result))), .. }) => {
+            Ok(embedding_result)
+        }
+        Ok(Maybe { data: Err(err), .. }) => {
+            Err(anyhow::anyhow!(err))
+        }
+        Err(err) => {
+            Err(anyhow::anyhow!(err))
+        }
+        _ => {
+            Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."))
+        }
+    }
+
 }
 
