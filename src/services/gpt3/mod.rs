@@ -117,7 +117,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                             let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
 
-                            for i in 0..8 { 
+                            for i in 0..8 {
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
@@ -382,12 +382,7 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
                                 result_split.pop();
                             }
                             item.result = result_split.join("\"");
-                            let mut result_split = item.result.split(".").collect::<Vec<&str>>();
-                            if result_split.len() > 1 {
-                                result_split.pop();
-                            }
-                            item.result = result_split.join(".");
-
+                            item.result = item.result.trim_end_matches(|c| c != '.').to_string();
                             Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(item)))
                         }
                         EmbeddingResult(_) => {
