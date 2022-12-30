@@ -43,8 +43,6 @@ const GPT3_PREFIX: &str = "GPT3";
 
 const TOPIC: [&str;1] = ["Governance proposals in the Cosmos blockchain ecosystem allow stakeholders to propose and vote on changes to the protocol, including modifications to the validator set, updates to the staking and reward mechanism, and the addition or removal of features. In order to effectively communicate the intended changes and their potential impact on the network, it is important to clearly outline the problem that the proposal aims to solve and provide a detailed description of the proposed solution. It may also be helpful to present relevant data or research to support the proposal, and to consider the broader implications of the proposal on the security, scalability, and decentralization of the network. Ultimately, the success of a governance proposal depends on the ability to clearly articulate the problem and solution and to persuade the community of the value and feasibility of the proposed changes."];
 
-const BIAS: &str = "This is an intelligent, informed and concise AI.";
-
 const PROMPTS: [&str;3] = [
             "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
             "A list of the governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
@@ -85,10 +83,10 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("about: {}",TOPIC[index])
         }
         PromptKind::SUMMARY => {
-            format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",BIAS,PROMPTS[0],text)
+            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",PROMPTS[0],text)
         },
         PromptKind::BULLET_POINTS => {
-            format!("<instruction>{}\n\n{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",BIAS,PROMPTS[1],text)
+            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
             let distance = 100;
@@ -119,10 +117,10 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
-            format!("<instruction>{}\n\nA string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",BIAS,QUESTIONS[index],text)
+            format!("<instruction>A string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("<instruction>{}\n\nA string containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",BIAS,COMMUNITY_NOTES[index],text)
+            format!("<instruction>A string containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",COMMUNITY_NOTES[index],text)
         }
     }
 }
@@ -223,7 +221,9 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         Some(item) => {
             linked_text.push(item);
         },
-        _ => {}
+        None => {
+            linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
+        }
     };
 
     let mut linked_text_embeddings = Vec::new();
@@ -281,6 +281,8 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
+    error!("my_selection for description:\n\n{:?}",my_selection);
+
     let mut result = String::new();
 
     for i in 0..my_selection.len(){
@@ -297,6 +299,38 @@ fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     let norm1 = vec1.iter().map(|x| x * x).sum::<f32>().sqrt();
     let norm2 = vec2.iter().map(|x| x * x).sum::<f32>().sqrt();
     dot_product / (norm1 * norm2)
+}
+
+
+
+pub fn retrieve_all_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Vec<LinkToTextResult>> {
+
+    let mut extracted_links: Vec<String> = extract_links(description);
+
+    let mut linked_text = Vec::new();
+
+    for i in 0..extracted_links.len() {
+        let link_key = get_key_for_link_to_text(&link_to_id(&extracted_links[i]));
+        if task_store.contains_key(&link_key) {
+            match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
+                Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
+                    linked_text.push(link_to_text_result);
+                }
+                Ok(Maybe { data: Err(_), .. }) => {
+                    // skipping
+                }
+                Err(err) => {
+                    return Err(anyhow::anyhow!(err));
+                }
+                _ => {
+                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
+                }
+            }
+        } else {
+            return Err(anyhow::anyhow!("Error: Unreachable: LinkToTextResult not found."));
+        }
+    }
+    Ok(linked_text)
 }
 
 
