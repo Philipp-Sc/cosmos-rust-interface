@@ -15,30 +15,6 @@ use nnsplit::NNSplitOptions;
 use nnsplit::tract_backend::NNSplit;
 use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
 
-// note this could be done on bullet points, or summaries. as well as just the original text.
-// bullet points are to inconherent, TODO: remove bullet points, and use embeddings to reduce the text.
-
-// TODO: 1) for each text-document split into sensible list: Vec<String> , "\n" or sentence, or something smarter
-// TODO: 2) generate embedding
-// TODO: 3) per prompt filter text-document content list: Vec<String> by embedding ranking to the query.
-
-// this keeps the text as it is, but removes unrelated text. this also reduces the price. as bullet points use a lot of prompts.
-// embedding is 50x cheaper
-// 100-200 tokens, just need smart text splitting.
-
-
-// better approach idea:
-
-
-// for each task:
-
-// go over whole text, split by \n, or by sentence?!
-
-// -> each sentence gets an embedding.
-// -> sort by distance to question
-
-// hopefully this method will censor unimportant text, and reduce the text that way.
-
 const GPT3_PREFIX: &str = "GPT3";
 
 const TOPICS_FOR_EMBEDDING: [&str;3] = [
@@ -48,23 +24,23 @@ const TOPICS_FOR_EMBEDDING: [&str;3] = [
 ];
 
 const PROMPTS: [&str;3] = [
-            "A string containing a brief neutral overview of the motivation or purpose behind this governance proposal (Tweet).",
-            "A list of the governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
-            "The link that leads to the community discussion/forum for this proposal (if none of the links fit return None).",
+            "String containing a brief neutral overview of the motivation or purpose behind this governance proposal in your own words (Tweet).",
+            "List of this governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
+            "The link leading to the community discussion/forum for this proposal (if exists else return None).",
                ];
 
 const QUESTIONS: [&str;2] = [
-    "Why is this proposal important? (only one sentence!)",
-    "What are the potential risks or downsides? (only one sentence!)",
+    "Why is this proposal important? (in your own words, only one sentence!)",
+    "What are the potential risks or downsides? (in your own words, only one sentence!)",
 ];
 
 const COMMUNITY_NOTES: [&str;6] = [
-    "Feasibility and technical viability (only one sentence!)",
-    "Economic impact (only one sentence!)",
-    "Legal and regulatory compliance (only one sentence!)",
-    "Long-term sustainability (only one sentence!)",
-    "Transparency & Accountability (only one sentence!)",
-    "Community Support (only one sentence!)",
+    "Feasibility and technical viability (in your own words, only one sentence!)",
+    "Economic impact (in your own words, only one sentence!)",
+    "Legal and regulatory compliance (in your own words, only one sentence!)",
+    "Long-term sustainability (in your own words, only one sentence!)",
+    "Transparency & Accountability (in your own words, only one sentence!)",
+    "Community Support (in your own words, only one sentence!)",
 ];
 
 pub enum PromptKind {
@@ -73,7 +49,6 @@ pub enum PromptKind {
     QUESTION(usize),
     LINK_TO_COMMUNITY,
     COMMUNITY_NOTE(usize),
-
 }
 
 pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
@@ -117,10 +92,10 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
-            format!("<instruction>A string containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
+            format!("<instruction>String containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true in_your_own_words=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
         },
         PromptKind::COMMUNITY_NOTE(index) => {
-            format!("<instruction>A string containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",COMMUNITY_NOTES[index],text)
+            format!("<instruction>String containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true in_your_own_words=true>let first_hand_account: &str = \"",COMMUNITY_NOTES[index],text)
         }
     }
 }
@@ -297,8 +272,6 @@ fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     dot_product / (norm1 * norm2)
 }
 
-
-
 pub fn retrieve_all_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Vec<LinkToTextResult>> {
 
     let mut extracted_links: Vec<String> = extract_links(description);
@@ -328,7 +301,6 @@ pub fn retrieve_all_link_to_text_results(task_store: &TaskMemoryStore, descripti
     }
     Ok(linked_text)
 }
-
 
 pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Option<LinkToTextResult>> {
 
@@ -388,7 +360,6 @@ pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, desc
     }else{
         Ok(None)
     }
-
 }
 
 pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> bool {
@@ -421,7 +392,22 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
-                Ok(data) => Ok(ResponseResult::OpenAIGPTResult(data)),
+                Ok(data) => {
+                    match data {
+                        OpenAIGPTResult::TextCompletionResult(mut item) => {
+                            let mut result_split = item.result.split("\"").collect::<Vec<&str>>();
+                            if result_split.len() > 1 {
+                                result_split.pop();
+                            }
+                            item.result = result_split.join("\"");
+                            Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(item)))
+                        }
+                        EmbeddingResult(_) => {
+                            Ok(ResponseResult::OpenAIGPTResult(data))
+                        }
+                    }
+
+                },
                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
             },
             timestamp: Utc::now().timestamp(),
