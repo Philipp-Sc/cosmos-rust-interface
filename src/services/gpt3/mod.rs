@@ -245,11 +245,11 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
                 let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
                 let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.clone()])?;
 
-                linked_text_embeddings.push(item.result.into_iter().zip(vec![chunk.to_string()].into_iter()).collect::<Vec<(Vec<f32>,String)>>());
+                linked_text_embeddings.push(item.result.into_iter().zip(vec![(chunk.to_string(),linked_text[i].link.to_string())].into_iter()).collect::<Vec<(Vec<f32>,(String,String))>>());
 
             }
     }
-    let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,String)>>();
+    let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,(String,String))>>();
 
 
 
@@ -261,7 +261,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         }
         let average_distance = sum_distance / (prompt_embedding.len() as f32);
         (average_distance,x.1)
-    }).enumerate().collect::<Vec<(usize,(f32,String))>>();
+    }).enumerate().collect::<Vec<(usize,(f32,(String,String)))>>();
 
 
     linked_text_embeddings.sort_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal));
@@ -271,7 +271,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     let mut chars: usize = 0;
 
     for i in 0..linked_text_embeddings.len(){
-        let char_count = linked_text_embeddings[i].1.1.chars().count();
+        let char_count = linked_text_embeddings[i].1.1.0.chars().count();
         if char_count + chars > 4*3500 {
             break;
         }else{
@@ -287,9 +287,12 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     let mut result = String::new();
 
     for i in 0..my_selection.len(){
-        result.push_str(&my_selection[i].1.1);
-        if i + 1 < my_selection.len() && my_selection[i].0 + 1 !=  my_selection[i+1].0 {
-            result.push_str("<next_paragraph/>");
+        result.push_str(&my_selection[i].1.1.0);
+        if i + 1 < my_selection.len() && my_selection[i].0 + 1 != my_selection[i+1].0 {
+            result.push_str("<next_excerpt/>");
+        }
+        if i + 1 < my_selection.len() && my_selection[i].1.1.1 != my_selection[i+1].1.1.1 {
+            result.push_str("<next_source/>");
         }
     }
     Ok(result)
