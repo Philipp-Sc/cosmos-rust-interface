@@ -95,6 +95,8 @@ impl LinkToTextResult {
                         my_hierarchical_segmentation[ii][i].0 = my_hierarchical_segmentation[ii][i].0 +1usize;
                     }
                 }
+            }else{
+                my_text_nodes.push(text_nodes[i].to_owned());
             }
         }
         Self {
