@@ -29,26 +29,22 @@ const PROMPTS: [&str;3] = [
             "The link leading to the community discussion/forum for this proposal (if exists else return None).",
                ];
 
-const QUESTIONS: [&str;2] = [
-    "Why is this proposal important? (in your own words, only one sentence!)",
-    "What are the potential risks or downsides? (in your own words, only one sentence!)",
+const QUESTIONS: [&str;8] = [
+    "Why is this proposal important? (in the style of a summary)",
+    "What are the potential risks or downsides? (in the style of a warning)",
+    "Is this proposal feasible and viable? (in the style of a technical assessment)",
+    "What is the economic impact? (in the style of an economic analysis)",
+    "Is it legally compliant? (in the style of a legal review)",
+    "Is it sustainable? (in the style of an environmental assessment)",
+    "Is it transparent and accountable? (in the style of a transparency report)",
+    "Is there community support? (in the style of a social impact assessment)"
 ];
 
-const COMMUNITY_NOTES: [&str;6] = [
-    "Feasibility and technical viability (in your own words, only one sentence!)",
-    "Economic impact (in your own words, only one sentence!)",
-    "Legal and regulatory compliance (in your own words, only one sentence!)",
-    "Long-term sustainability (in your own words, only one sentence!)",
-    "Transparency & Accountability (in your own words, only one sentence!)",
-    "Community Support (in your own words, only one sentence!)",
-];
 
 pub enum PromptKind {
     SUMMARY,
-    BULLET_POINTS,
     QUESTION(usize),
     LINK_TO_COMMUNITY,
-    COMMUNITY_NOTE(usize),
 }
 
 pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
@@ -59,9 +55,6 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",PROMPTS[0],text)
-        },
-        PromptKind::BULLET_POINTS => {
-            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let short_hand_notes_bullet_points = [\"",PROMPTS[1],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
             let distance = 100;
@@ -92,11 +85,8 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
             format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
-            format!("<instruction>String containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true in_your_own_words=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
+            format!("<instruction>String containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
         },
-        PromptKind::COMMUNITY_NOTE(index) => {
-            format!("<instruction>String containing the {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true in_your_own_words=true>let first_hand_account: &str = \"",COMMUNITY_NOTES[index],text)
-        }
     }
 }
 
@@ -127,17 +117,10 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                             let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
 
-                            for i in 0..2 {
+                            for i in 0..8 {
                                 // ** this means this might be called more than once.
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
-                                insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
-                            }
-                            for i in 0..6 {
-                                // ** this means this might be called more than once.
-                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1 + 2));
-                                let prompt = get_prompt_for_gpt3(&context,PromptKind::COMMUNITY_NOTE(i));
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
