@@ -31,13 +31,13 @@ const PROMPTS: [&str;3] = [
 
 const QUESTIONS: [&str;8] = [
     "Why is this proposal important? (in the style of a summary)",
-    "What are the potential risks or downsides? (in the style of a warning)",
-    "Is this proposal feasible and viable? (in the style of a technical assessment)",
-    "What is the economic impact? (in the style of an economic analysis)",
-    "Is it legally compliant? (in the style of a legal review)",
+    "What are the potential risks or downsides? (in the style of a reasonable warning)",
+    "Is this proposal feasible and viable? (in the style of a correct technical assessment)",
+    "What is the economic impact? (in the style of a balanced economic analysis)",
+    "Is it legally compliant? (in the style of a fair legal review)",
     "Is it sustainable? (in the style of an environmental assessment)",
-    "Is it transparent and accountable? (in the style of a transparency report)",
-    "Is there community support? (in the style of a social impact assessment)"
+    "Is it transparent and accountable? (in the style of a truthful transparency report)",
+    "Is there community support? (in the style of a social feedback assessment)"
 ];
 
 
@@ -114,14 +114,13 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                             let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                            let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
+                            let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
 
-                            for i in 0..8 {
-                                // ** this means this might be called more than once.
+                            for i in 0..8 { 
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 100u16);
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
                         }
@@ -383,6 +382,12 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
                                 result_split.pop();
                             }
                             item.result = result_split.join("\"");
+                            let mut result_split = item.result.split(".").collect::<Vec<&str>>();
+                            if result_split.len() > 1 {
+                                result_split.pop();
+                            }
+                            item.result = result_split.join(".");
+
                             Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(item)))
                         }
                         EmbeddingResult(_) => {
