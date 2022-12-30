@@ -217,6 +217,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
 
     let mut linked_text = vec![description_text_result];
+    /*
     match linked_text_result {
         Some(item) => {
             linked_text.push(item);
@@ -224,7 +225,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         None => {
             linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
         }
-    };
+    };*/
 
     let mut linked_text_embeddings = Vec::new();
 
