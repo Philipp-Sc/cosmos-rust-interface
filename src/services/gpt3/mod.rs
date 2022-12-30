@@ -204,9 +204,6 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
 }
 
 
-// TODO: fiix two bugs:
-// 1) why is CONTEXT in some cases empty?
-// 2) <next/> does not work correctly.
 
 
 pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, prompt_text: &str) -> anyhow::Result<String> {
@@ -219,16 +216,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         text_nodes: vec![prompt_text.to_string()],
         hierarchical_segmentation: vec![vec![true]]
     };
-
-    let splitter = NNSplit::load(
-        "en",
-        NNSplitOptions::default(),
-    ).unwrap();
-    let split = &splitter.split(&[description])[0];
-    let sentences = split.flatten(0).iter().map(|x| x.to_string()).collect::<Vec<String>>();
-    let hierarchical_segmentation = vec![sentences.iter().map(|_| true).collect::<Vec<bool>>()];
-
-    let description_text_result = LinkToTextResult::new(description,sentences,hierarchical_segmentation,300);
+    let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
 
     let mut linked_text = vec![description_text_result];
     match linked_text_result {
@@ -237,8 +225,6 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         },
         _ => {}
     };
-
-    error!("linked_text: {:?}",linked_text);
 
     let mut linked_text_embeddings = Vec::new();
 
@@ -295,15 +281,12 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
-
-    error!("my_selection: {:?}",my_selection);
-
     let mut result = String::new();
 
     for i in 0..my_selection.len(){
         result.push_str(&my_selection[i].1.1);
         if i + 1 < my_selection.len() && my_selection[i].0 + 1 !=  my_selection[i+1].0 {
-            result.push_str("<next-excerpt/>");
+            result.push_str("<next_paragraph/>");
         }
     }
     Ok(result)
