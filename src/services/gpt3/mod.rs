@@ -204,7 +204,9 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
 }
 
 
-
+// TODO: fiix two bugs:
+// 1) why is CONTEXT in some cases empty?
+// 2) <next/> does not work correctly.
 
 
 pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, prompt_text: &str) -> anyhow::Result<String> {
@@ -236,29 +238,27 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         _ => {}
     };
 
+    error!("linked_text: {:?}",linked_text);
+
     let mut linked_text_embeddings = Vec::new();
 
     let mut prompt_embedding = Vec::new();
 
 
-    for chunk in prompt_text_result.text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
-
-        let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk.join("")), "embedding");
-        let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, chunk)?;
+    for chunk in &prompt_text_result.text_nodes {
+        let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
+        let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.to_string()])?;
         prompt_embedding.append(&mut item.result);
-
     }
-
 
     for i in 0..linked_text.len() {
 
-            for chunk in linked_text[i].text_nodes.chunks(1).map(|chunk| chunk.to_vec()) {
+            for chunk in &linked_text[i].text_nodes {
 
-                let chunk_text = chunk.join("");
-                let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk_text), "embedding");
-                let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, chunk.clone())?;
+                let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
+                let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.clone()])?;
 
-                linked_text_embeddings.push(item.result.into_iter().zip(chunk.into_iter()).collect::<Vec<(Vec<f32>,String)>>());
+                linked_text_embeddings.push(item.result.into_iter().zip(vec![chunk.to_string()].into_iter()).collect::<Vec<(Vec<f32>,String)>>());
 
             }
     }
@@ -294,6 +294,9 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     }
 
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
+
+
+    error!("my_selection: {:?}",my_selection);
 
     let mut result = String::new();
 
