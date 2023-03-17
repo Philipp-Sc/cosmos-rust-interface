@@ -1,11 +1,12 @@
 use crate::utils::entry::*;
 use crate::utils::response::ResponseResult;
 use std::collections::HashMap;
+use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 
-pub fn errors(maybes: impl Iterator<Item = (String,Maybe<ResponseResult>)>) -> Vec<CosmosRustBotValue> {
+pub fn errors(task_store: &TaskMemoryStore) -> Vec<CosmosRustBotValue> {
     let mut view: Vec<CosmosRustBotValue> = Vec::new();
 
-    for (key, value) in maybes {
+    for (key, value) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::Get) {
         match value {
             Maybe {
                 data: Ok(_resolved),

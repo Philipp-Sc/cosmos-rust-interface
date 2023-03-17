@@ -30,6 +30,7 @@ const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
 const REV_INDEX_PREFIX: &str = "rev_index_";
 
 const CRB_SUBSCRIPTION_STORE_JSON: &str = "./tmp/cosmos_rust_bot_subscriptions.json";
+const CRB_REGISTRATION_STORE_JSON: &str = "./tmp/cosmos_rust_bot_registrations.json";
 
 pub fn load_sled_db(path: &str) -> sled::Db {
     let db: sled::Db = sled::Config::default()
@@ -298,6 +299,9 @@ impl CosmosRustBotStore {
             QueryPart::SubscriptionsQueryPart(query_part) => {
                 self.update_and_get_subscriptions_for_user(query_part, &query.settings_part)
             }
+            QueryPart::RegisterQueryPart(_query_part) => {
+                self.register_and_get_token_for_user(&query.settings_part)
+            }
         }
     }
 
@@ -450,6 +454,40 @@ impl CosmosRustBotStore {
         }
     }
 
+    fn register_and_get_token_for_user(&mut self, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
+
+        if let Some(user_hash) = settings_part.user_hash {
+            if let Some(true) = settings_part.register {
+                let item = CosmosRustBotValue::Registration(Registration {
+                    token: 0,
+                    user_hash,
+                });
+                let key = item.key();
+                let value: Vec<u8> = item.try_into().unwrap();
+
+                self.subscription_store.0.insert(key, value)
+                    .ok();
+            }
+
+            let key = Registration::get_key_for_user_hash(user_hash);
+
+            return match self.subscription_store.0.get(key) {
+                Err(_e) => {
+                    vec![]
+                }
+                Ok(None) => {
+                    vec![]
+                }
+                Ok(Some(v)) => {
+                    let result: CosmosRustBotValue = v.to_vec().try_into().unwrap();
+                    vec![result]
+                }
+            }
+
+        }
+        vec![]
+    }
+
     fn update_and_get_subscriptions_for_user(&mut self, _query_part: &SubscriptionsQueryPart, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
         let mut res: Vec<CosmosRustBotValue> = Vec::new();
 
@@ -558,9 +596,9 @@ impl CosmosRustBotStore {
 
             copy_self.subscription_store.register_subscriber().unwrap();
 
-            while let Some(updated) = copy_self.subscription_store.get_next_updated_subscription() {
+            while let Some(updated) = copy_self.subscription_store.get_next_updated() {
 
-                if let Ok(s) = updated {
+                if let Ok(CosmosRustBotValue::Subscription(s)) = updated {
                     if s.action == SubscriptionAction::Update  {
 
                         let query: UserQuery = UserQuery {
@@ -568,6 +606,7 @@ impl CosmosRustBotStore {
                             settings_part: SettingsPart {
                                 subscribe: None,
                                 unsubscribe: None,
+                                register: None,
                                 user_hash: None,
                             }
                         };
@@ -719,8 +758,31 @@ impl SubscriptionStore {
         })
     }
 
+    pub fn get_registrations(&self) -> impl Iterator<Item = Registration> {
+        self.0.db.scan_prefix(Registration::get_prefix()).filter_map(|item| match item {
+            Ok((_k, v)) => {
+                match v.to_vec().try_into().unwrap() {
+                    CosmosRustBotValue::Registration(reg) => {
+                        Some(reg)
+                    },
+                    _ => {None}
+                }
+            },
+            Err(_e) => {
+                None
+            }
+        })
+    }
+
     pub fn export_subscriptions(&self, path: &str){
         let json = serde_json::json!(self.get_subscriptions().collect::<Vec<Subscription>>());
+        if let Ok(serialized) = serde_json::to_string_pretty(&json) {
+            std::fs::write(path, serialized).ok();
+        }
+    }
+
+    pub fn export_registrations(&self, path: &str){
+        let json = serde_json::json!(self.get_registrations().collect::<Vec<Registration>>());
         if let Ok(serialized) = serde_json::to_string_pretty(&json) {
             std::fs::write(path, serialized).ok();
         }
@@ -739,7 +801,20 @@ impl SubscriptionStore {
         }
     }
 
-    pub fn get_next_updated_subscription(&mut self) -> Option<anyhow::Result<Subscription>> {
+    pub fn import_registrations(&self, path: &str){
+        if let Ok(contents) = std::fs::read_to_string(path){
+            if let Ok(registrations) = serde_json::from_str::<Vec<Registration>>(&contents){
+                for registration in registrations {
+                    let item = CosmosRustBotValue::Registration(registration);
+                    let key = item.key();
+                    let value: Vec<u8> = item.try_into().unwrap();
+                    self.0.db.insert(&key, value).ok();
+                }
+            }
+        }
+    }
+
+    pub fn get_next_updated(&mut self) -> Option<anyhow::Result<CosmosRustBotValue>> {
         match self.0.await_next_update() {
             Some(sled::Event::Remove { key }) => {
                 Some(Err(anyhow::anyhow!("Error: Remove Event.")))
@@ -748,7 +823,11 @@ impl SubscriptionStore {
                 match value.to_vec().try_into().unwrap() {
                     CosmosRustBotValue::Subscription(s) => {
                         self.export_subscriptions(CRB_SUBSCRIPTION_STORE_JSON);
-                        Some(Ok(s))
+                        Some(Ok(CosmosRustBotValue::Subscription(s)))
+                    },
+                    CosmosRustBotValue::Registration(r) => {
+                        self.export_subscriptions(CRB_REGISTRATION_STORE_JSON);
+                        Some(Ok(CosmosRustBotValue::Registration(r)))
                     },
                     _ => {
                         Some(Err(anyhow::anyhow!("Error: Unexpected Type.")))

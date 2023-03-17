@@ -127,7 +127,6 @@ pub struct FraudClassificationStatus {
 pub struct FraudClassification {
     pub title: String,
     pub description: String,
-    pub text: String,
     pub fraud_prediction: f64,
 }
 

@@ -75,6 +75,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 match entry {
                                     CosmosRustBotValue::Subscription(sub) => {
                                         match sub.query {
+                                            QueryPart::RegisterQueryPart(_) => {},
                                             QueryPart::SubscriptionsQueryPart(_) => {},
                                             QueryPart::EntriesQueryPart(query_part) => {
 
@@ -251,6 +252,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                     }
                                 }
                                 CosmosRustBotValue::Subscription(_) => {}
+                                CosmosRustBotValue::Registration(_) => {}
                             }
                         }
 
@@ -263,6 +265,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         }
                     }
                 }
+                QueryPart::RegisterQueryPart(_) => {}
             };
         }
     };

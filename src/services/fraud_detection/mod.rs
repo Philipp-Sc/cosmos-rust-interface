@@ -7,6 +7,7 @@ use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassificatio
 use rust_bert_fraud_detection_socket_ipc::ipc::client_send_rust_bert_fraud_detection_request;
 use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 
+use csv::Writer;
 
 const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
 
@@ -16,7 +17,12 @@ pub fn get_key_for_fraud_detection(hash: u64) -> String {
 }
 
 // TODO: potentially batch multiple requests.
+
 pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
+
+
+    let mut wtr = csv::Writer::from_path("./tmp/governance_proposal_spam_likelihood.csv").unwrap();
+    wtr.write_record(&["body","label"]).unwrap();
 
     let mut keys: Vec<String> = Vec::new();
 
@@ -26,6 +32,21 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
+
+                for each in proposals.iter_mut().filter(|x| x.status!=ProposalStatus::StatusDepositPeriod && x.status!=ProposalStatus::StatusVotingPeriod) {
+
+
+                    let (title, description) = each.get_title_and_description();
+                    let text =  format!("{}\n\n{}",title,description);
+                    let spam_likelihood = each.spam_likelihood();
+
+                    if let Some(value) = spam_likelihood {
+                        wtr.write_record(&[text.as_str(), value.to_string().as_str()]).unwrap();
+                    }
+
+                }
+                wtr.flush().unwrap();
+
 
                 for each in proposals.iter_mut().filter(|x| x.status==ProposalStatus::StatusDepositPeriod || x.status==ProposalStatus::StatusVotingPeriod) {
 
@@ -43,16 +64,26 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                         let (title, description) = each.get_title_and_description();
                         let result: Maybe<ResponseResult> = Maybe {
                             data: match result {
-                                Ok(data) => Ok(ResponseResult::FraudClassification(FraudClassification{
-                                    title,
-                                    description,
-                                    text,
-                                    fraud_prediction: data.fraud_probabilities[0]
-                                })),
+                                Ok(data) => {
+
+                                    let fraud_classification = FraudClassification {
+                                        title,
+                                        description,
+                                        fraud_prediction: data.fraud_probabilities[0]
+                                    };
+                                    // write the FraudClassification to a JSON file in a specific format, with the file path based on the blockchain and proposal ID.
+                                    let file_path = format!("./tmp/fraud_detection/{}/{}.json", each.blockchain_name.to_lowercase(),each.proposal().map(|x| x.proposal_id.to_string()).unwrap_or("?".to_string()));
+                                    let json_string = serde_json::to_string(&fraud_classification)?;
+                                    std::fs::write(&file_path, json_string)?;
+
+                                    Ok(ResponseResult::FraudClassification(fraud_classification))
+
+                                } ,
                                 Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
                             },
                             timestamp: Utc::now().timestamp(),
                         };
+
                         keys.push(key_for_hash);
                         task_store.push(&keys.last().unwrap(),result).ok();
 

@@ -320,6 +320,9 @@ impl Subscription {
             QueryPart::SubscriptionsQueryPart(q) => {
                 q.hash(&mut s);
             },
+            QueryPart::RegisterQueryPart(q) => {
+                q.hash(&mut s);
+            }
         }
         s.finish()
     }
@@ -351,6 +354,27 @@ impl Subscription {
     }
     pub fn remove_user_hash(&mut self, user_hash: u64) -> bool {
         self.user_list.remove(&user_hash)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Registration {
+    pub token: u64,
+    pub user_hash: u64,
+}
+impl Registration {
+    pub fn get_prefix() -> Vec<u8> {
+        let mut k: Vec<u8> = Vec::new();
+        k.append(&mut b"registration".to_vec());
+        k
+    }
+    pub fn get_key(&self) -> Vec<u8> {
+        Registration::get_key_for_user_hash(self.user_hash)
+    }
+    pub fn get_key_for_user_hash(user_hash: u64) -> Vec<u8> {
+        let mut k: Vec<u8> = Registration::get_prefix();
+        k.append(&mut user_hash.to_ne_bytes().to_vec());
+        k
     }
 }
 
@@ -456,11 +480,13 @@ impl TryFrom<UserQuery> for Vec<u8> {
 pub struct SettingsPart {
     pub subscribe: Option<bool>,
     pub unsubscribe: Option<bool>,
+    pub register: Option<bool>,
     pub user_hash: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum QueryPart {
+    RegisterQueryPart(RegisterQueryPart),
     EntriesQueryPart(EntriesQueryPart),
     SubscriptionsQueryPart(SubscriptionsQueryPart)
 }
@@ -471,6 +497,9 @@ impl Hash for QueryPart {
                 q.hash(state);
             },
             QueryPart::SubscriptionsQueryPart(q) => {
+                q.hash(state);
+            },
+            QueryPart::RegisterQueryPart(q) => {
                 q.hash(state);
             },
         }
@@ -501,8 +530,12 @@ impl Hash for EntriesQueryPart {
     }
 }
 
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
-pub struct  SubscriptionsQueryPart {
+pub struct RegisterQueryPart {}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct SubscriptionsQueryPart {
     pub message: String,
 }
 
@@ -592,6 +625,7 @@ pub enum CosmosRustBotValue {
     Index(Index),
     Entry(Entry),
     Subscription(Subscription),
+    Registration(Registration),
 }
 
 impl TryFrom<Vec<u8>> for CosmosRustBotValue {
@@ -614,6 +648,7 @@ impl CosmosRustBotValue {
             CosmosRustBotValue::Entry(entry) => entry.get_key(),
             CosmosRustBotValue::Index(index) => index.get_key(),
             CosmosRustBotValue::Subscription(sub) => sub.get_key(),
+            CosmosRustBotValue::Registration(reg) => reg.get_key(),
         }
     }
     pub fn get(&self, field: &str) -> serde_json::Value {
@@ -634,6 +669,11 @@ impl CosmosRustBotValue {
                 "query" => serde_json::json!(val.query),
                 "user_list" => serde_json::json!(val.user_list),
                 "list" => serde_json::json!(val.list),
+                &_ => serde_json::Value::Null,
+            },
+            CosmosRustBotValue::Registration(val) => match field {
+                "token" => serde_json::json!(val.token),
+                "user_hash" => serde_json::json!(val.user_hash),
                 &_ => serde_json::Value::Null,
             },
         }
