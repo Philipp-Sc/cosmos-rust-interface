@@ -307,17 +307,22 @@ impl CosmosRustBotStore {
 
     fn query_entries(&mut self, query_part: &EntriesQueryPart) -> Vec<CosmosRustBotValue> {
 
+        // Clone the filter in query_part to avoid any modifications to the original filter
         let mut filter = query_part.filter.clone();
 
+        // Get the order_by and limit from the query_part
         let order_by: Option<&str> = Some(&query_part.order_by);
         let limit: Option<usize> = Some(query_part.limit);
 
+        // Create a new vector of vector of vector of bytes to hold the indices list
         let mut indices_list: Vec<Vec<Vec<u8>>> = Vec::new();
+
+        // Initialize the order_by_index to None
         let mut order_by_index: Option<Vec<Vec<u8>>> = None;
-        //println!("{:?}", &order_by_index.map(|x| x.len()));
+
+        // Get all the indices from the index store and check if the index applies to the query.
+        // If it does, add the index's list to the indices_list and remove the unnecessary filters for the index.
         for index in self.index_store.get_indices().filter_map(|x| if let CosmosRustBotValue::Index(index) = x { Some(index)}else{None}) {
-            //print!("{:?}", val.try_get("name"));
-            //println!("{:?}", index.name);
 
             let index_applies = query_part.indices.contains(&index.name);
             if index_applies {
@@ -332,57 +337,61 @@ impl CosmosRustBotStore {
                 }
             }
 
+            // Check if order_by is present and set order_by_index to the list of the index with the same name as order_by
             if let Some(ord) = order_by {
                 if &index.name == &ord {
                     order_by_index = Some(index.list.clone());
                 }
             }
         }
+
+        // Inner join the indices_list
         inner_join_vec(&mut indices_list);
 
+        // Initialize selection to an empty vector
         let mut selection: Vec<Vec<u8>> = Vec::new();
+
+        // Add the first vector in indices_list to the selection if indices_list is not empty
         if indices_list.len()>0 {
             selection.append(&mut indices_list[0]);
         }
 
+        // If order_by_index is present, sort the selection by order_by_index
         if let Some(ord) = order_by_index {
             selection = sort_by_index(selection,ord);
         }
 
+        // Initialize result to an empty vector
         let mut result: Vec<CosmosRustBotValue> = Vec::new();
 
+        // Filter the entries in entry_store and add the matching entries to result
         for item in selection.iter().map(|x| self.entry_store.0.db.get(x).map(|x| x.map(|y| y.to_vec().try_into().unwrap())).unwrap_or(None::<CosmosRustBotValue>)) {
+            // Map the selection to their corresponding entries, and iterate through them
             if let Some(entry) = item {
+                // If the entry exists, check if it matches the filter
                 if filter.is_empty() ||
                     filter
+                        // Iterate through each filter condition
                         .iter().fold(false, |or, f| or || f.iter().fold(true, |sum, (k, v)|
                         {
                             let val = entry.get(k);
+
+                            // If the value for the key doesn't exist, return false
                             if val == serde_json::Value::Null {
-                                //println!("Key: {:?}", k );
                                 false
                             }else{
-                                //println!("{:?}==?{:?}, Key: {:?}",&val, v, k );
+                                // Compare the value for the key against the filter value
                                 if v.as_str() == "any" {
+                                    // If the filter value is "any", always return true
                                     sum
                                 } else if val.is_number() {
-                                    // gt, lt, eq,
-                                    /*
-                                    if v.contains("eq "){
-                                        let compare = v.replace("eq ","");
-                                        &val.to_string() == &compare && sum
-                                    }else if v.contains("lt "){
-                                        let compare = v.replace("lt ","");
-                                        &val.as_f64().unwrap_or(0f64) < &compare.parse::<f64>().unwrap_or(0f64) && sum
-                                    }else if v.contains("gt "){
-                                        let compare = v.replace("gt ","");
-                                        &val.as_f64().unwrap_or(0f64) > &compare.parse::<f64>().unwrap_or(0f64) && sum
-                                    }else {*/
+                                    // If the value is a number, compare it numerically
                                     &val.to_string() == v && sum
-                                    //}
                                 } else if let Some(s) = val.as_str() {
+                                    // If the value is a string, compare it as a string
                                     s == v.as_str() && sum
                                 } else {
+                                    // Otherwise, the value type is not supported
                                     false
                                 }
                             }

@@ -36,5 +36,6 @@ pub fn errors(task_store: &TaskMemoryStore) -> Vec<CosmosRustBotValue> {
         }
     }
     CosmosRustBotValue::add_membership(&mut view, None, "task_meta_data_errors");
+    CosmosRustBotValue::add_variants_of_memberships(&mut view, vec!["kind"]);
     view
 }
