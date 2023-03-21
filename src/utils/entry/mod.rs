@@ -171,7 +171,7 @@ impl CustomData {
     fn view_in_browser(&self) -> Option<String> {
         match &self {
             CustomData::ProposalData(o) => {
-                Some(o.proposal_link.to_owned())
+                Some(o.proposal_api.to_owned())
             },
             _ => {
                 None
@@ -191,6 +191,7 @@ trait GetField {
 
 #[derive(Serialize,Deserialize,Debug, Clone,PartialEq, Hash)]
 pub struct ProposalData {
+    pub proposal_api: String,
     pub proposal_link: String,
     pub proposal_clickbait: String,
     pub proposal_details: String,

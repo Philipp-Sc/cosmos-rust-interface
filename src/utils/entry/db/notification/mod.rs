@@ -135,6 +135,8 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                         let mut navigation_row2 = Vec::new();
 
                                         if &query_part.display == "default" {
+
+                                            /*
                                             if let Some(command) = custom_data.command("status") {
                                                 navigation_row.push(
                                                     ("📊 Status".to_string(), command),
@@ -146,19 +148,19 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                     ("🏛 ️Proposal".to_string(), command),
                                                 );
                                             }
+                                            */
+                                            if let Some(command) = custom_data.command("briefing0") {
+                                                navigation_row.push(
+                                                    ("⚡ Start Briefing".to_string(), command),
+                                                );
+                                            }
 
                                             if let Some(link) = custom_data.view_in_browser() {
                                                 navigation_row2.push(
                                                     ("Open in Browser".to_string(), link),
                                                 );
                                             }
-
-                                            if let Some(command) = custom_data.command("briefing0") {
-                                                navigation_row2.push(
-                                                    ("⚡ Start Briefing".to_string(), command),
-                                                );
-                                            }
-
+                                            
 
                                             navigation.push(navigation_row);
                                             navigation.push(navigation_row2);

@@ -85,6 +85,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                 }
 
                 let data =  ProposalData {
+                        proposal_api: format!("https://libreai.de/cosmos-governance-proposals/{}/{}.html",proposal.blockchain_name.to_string().to_lowercase(),proposal.proposal().map(|x| x.proposal_id.to_string()).unwrap_or("??".to_string())),
                         proposal_link: proposal.governance_proposal_link(),
                         proposal_clickbait: proposal.proposal_clickbait(fraud_classification),
                         proposal_briefings: briefings,
