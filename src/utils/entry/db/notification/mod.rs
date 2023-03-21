@@ -160,7 +160,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                     ("Open in Browser".to_string(), link),
                                                 );
                                             }
-                                            
+
 
                                             navigation.push(navigation_row);
                                             navigation.push(navigation_row2);

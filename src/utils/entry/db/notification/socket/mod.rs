@@ -6,9 +6,9 @@ use super::super::socket::{client_send_request, Handler, spawn_socket_service};
 use std::thread::JoinHandle;
 
 pub fn spawn_socket_notification_server(socket_path: &str, tree: &sled::Db) -> JoinHandle<()> {
-    println!("spawn_socket_service startup");
-    let task = spawn_socket_service(socket_path,Box::new(NotificationHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
-    println!("spawn_socket_service ready");
+    println!("Spawning Unix domain socket Notification server at '{}'", socket_path);
+    let task = spawn_socket_service(socket_path, Box::new(NotificationHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
+    println!("Spawned Unix domain socket Notification server ready");
     task
 }
 pub struct NotificationHandler
@@ -28,7 +28,7 @@ impl Handler for NotificationHandler
     }
 }
 pub fn client_send_notification_request(socket_path: &str, request: CosmosRustServerValue) -> anyhow::Result<NotifyResult> {
-    println!("client_send_request initiating");
+    println!("Sending notification request to Notification service at '{}'", socket_path);
     client_send_request(socket_path,request)
 }
 
