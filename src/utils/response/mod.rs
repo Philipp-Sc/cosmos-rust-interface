@@ -124,7 +124,7 @@ pub struct FraudClassificationStatus {
 }
 
 #[derive(Serialize,Deserialize,Debug, Clone)]
-pub struct FraudClassification {
+pub struct FraudClassification { 
     pub title: String,
     pub description: String,
     pub fraud_prediction: f64,

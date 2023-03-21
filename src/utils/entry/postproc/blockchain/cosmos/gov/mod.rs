@@ -56,7 +56,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 let proposal_hash = proposal.to_hash();
 
-                let hash = proposal.title_and_description_to_hash();
+                let hash = proposal.id_title_and_description_to_hash();
 
                 let fraud_classification = match task_store.get::<ResponseResult>(&get_key_for_fraud_detection(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, fraud_prediction })), timestamp }) => {
