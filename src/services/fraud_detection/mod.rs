@@ -76,6 +76,10 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                                     let json_string = serde_json::to_string(&fraud_classification)?;
                                     std::fs::write(&file_path, json_string)?;
 
+                                    // temp solution, TODO: make own task
+                                    let file_path = format!("./tmp/governance_proposals/{}/{}.json", each.blockchain_name.to_lowercase(),each.proposal().map(|x| x.proposal_id.to_string()).unwrap_or("?".to_string()));
+                                    std::fs::write(&file_path, each.generate_html(Some(fraud_classification.fraud_prediction)))?;
+
                                     Ok(ResponseResult::FraudClassification(fraud_classification))
 
                                 } ,
