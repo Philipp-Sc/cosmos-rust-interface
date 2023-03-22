@@ -6,8 +6,8 @@ use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
-use rust_openai_gpt_tools_socket_ipc::ipc::{client_send_openai_gpt_embedding_request, client_send_openai_gpt_text_completion_request, OpenAIGPTResult};
-use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTTextCompletionResult,OpenAIGPTEmbeddingResult};
+use rust_openai_gpt_tools_socket_ipc::ipc::{client_send_openai_gpt_chat_completion_request, client_send_openai_gpt_embedding_request, client_send_openai_gpt_text_completion_request, OpenAIGPTResult};
+use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTChatCompletionResult,OpenAIGPTEmbeddingResult};
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
 
@@ -100,16 +100,14 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-                for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
+                for each in proposals.iter_mut().filter(|x| !(x.status == ProposalStatus::StatusDepositPeriod || x.status == ProposalStatus::StatusNil)) {
                     let hash = each.id_title_and_description_to_hash();
 
                     if fraud_detection_result_is_ok(&task_store,hash) {
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        let text_triggers = vec![TOPICS_FOR_EMBEDDING[0].to_string(),TOPICS_FOR_EMBEDDING[1].to_string(),TOPICS_FOR_EMBEDDING[2].to_string()];
-
-                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, text_triggers) {
+                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
                             error!("CONTEXT:\n{:?}",context);
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
@@ -117,12 +115,14 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                             let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
 
+                            /*
                             for i in 0..8 {
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
                                 let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
                             }
+                             */
                         }
                     }
                 }
@@ -296,7 +296,7 @@ pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, desc
 
         if task_store.contains_key(&key_for_link_to_community) {
             match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
-                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(OpenAIGPTTextCompletionResult { result, .. }))), .. }) => {
+                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
                     if result.contains("None") || !result.contains("Some") {
                         extracted_links = Vec::new();
                     } else {
@@ -351,7 +351,7 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     if task_store.contains_key(&fraud_detection_key_for_hash) {
         match task_store.get::<ResponseResult>(&fraud_detection_key_for_hash, &RetrievalMethod::GetOk) {
             Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification { fraud_prediction, .. })), .. }) => {
-                if fraud_prediction < 0.7 {
+                if fraud_prediction < 0.4 {
                     return true;
                 }else {
                     return false;
@@ -369,23 +369,27 @@ pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store
     if !task_store.contains_key(&key) {
         
         error!("client_send_openai_gpt_text_completion_request");
-        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_text_completion_request("./tmp/rust_openai_gpt_tools_socket", prompt.to_owned(), completion_token_limit);
+        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", "You are Cosmos Rust Bot.
+Featuring:
+- an fraud detection (state of the art), warning users about scams or malicious content, censoring dangerous links/URLs.
+Attributes:
+- helpful, expert, truthful.".to_string(), prompt.to_owned(), completion_token_limit);
         error!("result: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
                 Ok(data) => {
                     match data {
-                        OpenAIGPTResult::TextCompletionResult(mut item) => {
+                        OpenAIGPTResult::ChatCompletionResult(mut item) => {
                             let mut result_split = item.result.split("\"").collect::<Vec<&str>>();
                             if result_split.len() > 1 {
                                 result_split.pop();
                             }
                             item.result = result_split.join("\"");
                             item.result = item.result.trim_end_matches(|c| c != '.').to_string();
-                            Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(item)))
+                            Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(item)))
                         }
-                        EmbeddingResult(_) => {
+                        _ => {
                             Ok(ResponseResult::OpenAIGPTResult(data))
                         }
                     }
