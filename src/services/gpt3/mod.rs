@@ -17,6 +17,20 @@ use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
 
 const GPT3_PREFIX: &str = "GPT3";
 
+const SYSTEM_RETRIEVE_OPTION: &str = r#"You are the rust compiler:
+- response type: Option<&str>
+Note: your response might start with one of ["None","Some"] depending on the instruction.
+Guideline:
+Let's think step by step.
+Make sure the string really exist within the given source."#;
+
+
+const SYSTEM_SUMMARY: &str = r#"Fraud detection refuses suspicious content without explanation.
+No unfounded assumptions are made.
+JimBrowning, Coffeezilla, DigitalBytes.
+Guideline:
+Let's think step by step. "#;
+
 const TOPICS_FOR_EMBEDDING: [&str;3] = [
     "Governance proposals in the Cosmos blockchain ecosystem allow stakeholders to propose and vote on changes to the protocol, including modifications to the validator set, updates to the staking and reward mechanism, and the addition or removal of features. In order to effectively communicate the intended changes and their potential impact on the network, it is important to clearly outline the problem that the proposal aims to solve and provide a detailed description of the proposed solution. It may also be helpful to present relevant data or research to support the proposal, and to consider the broader implications of the proposal on the security, scalability, and decentralization of the network. Ultimately, the success of a governance proposal depends on the ability to clearly articulate the problem and solution and to persuade the community of the value and feasibility of the proposed changes.",
     "Community notes are a way for people to collaborate and provide additional context or information on a proposal. By allowing a diverse group of contributors to leave notes and rate the helpfulness of those notes, the goal is to create a more informed and balanced understanding of the proposal. This can help to ensure that decision-making processes are based on accurate and complete information. There are a few key considerations to keep in mind when using community notes: Encourage diverse perspectives: It's important to encourage contributors from different backgrounds and viewpoints to leave notes. This can help to provide a more balanced and comprehensive understanding of the proposal. Verify information: It's important to verify the accuracy of any information provided in a community note. This can help to ensure that the notes are reliable and helpful to others.     Be respectful and civil: It's important to maintain a respectful and civil tone when leaving a community note. Personal attacks or inflammatory language are not productive and can discourage others from contributing. Overall, community notes can be a valuable tool for fostering collaboration and improving the quality of information available when considering a proposal.",
@@ -24,9 +38,9 @@ const TOPICS_FOR_EMBEDDING: [&str;3] = [
 ];
 
 const PROMPTS: [&str;3] = [
-            "String containing a brief neutral overview of the motivation or purpose behind this governance proposal in your own words (Tweet).",
+            "Provide a brief neutral overview of this governance proposal.",
             "List of this governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
-            "The link leading to the community discussion/forum for this proposal (if exists else return None).",
+            "Extract the link leading to the community discussion/forum for this proposal.",
                ];
 
 const QUESTIONS: [&str;8] = [
@@ -54,7 +68,7 @@ pub fn get_key_for_gpt3(hash: u64, prompt_id: &str) -> String {
 pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
     match prompt_kind {
         PromptKind::SUMMARY => {
-            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let brief_overview: &str  = r#\"",PROMPTS[0],text)
+            format!("<instruction>{}</instruction><source>{}</source><result>",PROMPTS[0],text)
         },
         PromptKind::LINK_TO_COMMUNITY  => {
             let distance = 100;
@@ -82,7 +96,7 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
                 result.push_str(&after_link[..after_end]);
             }
 
-            format!("<instruction>{}\n\n</instruction><source>{}</source>\n\n<result>let maybe_selected_link: Option<String> = ",PROMPTS[2],result)
+            format!("<instruction>{}</instruction><source>{}</source><result>",PROMPTS[2],result)
         }
         PromptKind::QUESTION(index) => {
             format!("<instruction>String containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
@@ -100,7 +114,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-                for each in proposals.iter_mut().filter(|x| !(x.status == ProposalStatus::StatusDepositPeriod || x.status == ProposalStatus::StatusNil)) {
+                for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
                     let hash = each.id_title_and_description_to_hash();
 
                     if fraud_detection_result_is_ok(&task_store,hash) {
@@ -112,7 +126,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                             let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                            let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
+                            let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 150u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
 
                             /*
@@ -181,9 +195,9 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         }
     };
 
+    let mut prompt_embedding = Vec::new();
     let mut linked_text_embeddings = Vec::new();
 
-    let mut prompt_embedding = Vec::new();
 
 
     for chunk in &prompt_text_result.text_nodes {
@@ -292,7 +306,7 @@ pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, desc
 
         let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
         let prompt = get_prompt_for_gpt3(description, PromptKind::LINK_TO_COMMUNITY);
-        if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_link_to_community, &prompt, 100u16);
+        if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_link_to_community, &SYSTEM_RETRIEVE_OPTION, &prompt, 100u16);
 
         if task_store.contains_key(&key_for_link_to_community) {
             match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
@@ -364,16 +378,12 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     return false;
 }
 
-pub fn if_key_does_not_exist_insert_openai_gpt_text_completion_result(task_store: &TaskMemoryStore, key: &str, prompt: &str, completion_token_limit: u16) -> bool {
+pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store: &TaskMemoryStore, key: &str, system: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
     if !task_store.contains_key(&key) {
         
         error!("client_send_openai_gpt_text_completion_request");
-        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", "You are Cosmos Rust Bot.
-Featuring:
-- an fraud detection (state of the art), warning users about scams or malicious content, censoring dangerous links/URLs.
-Attributes:
-- helpful, expert, truthful.".to_string(), prompt.to_owned(), completion_token_limit);
+        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", system.to_owned(), prompt.to_owned(), completion_token_limit);
         error!("result: {:?}",result);
 
         let result: Maybe<ResponseResult> = Maybe {
