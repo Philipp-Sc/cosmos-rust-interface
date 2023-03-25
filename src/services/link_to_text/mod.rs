@@ -86,7 +86,7 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
             })),
             timestamp: Utc::now().timestamp(),
         };
-        error!("insert_progress: {:?}",progress);
+        info!("insert_progress: {:?}",progress);
 
         keys.push(key.to_owned());
         task_store.push(&key, progress).ok();
@@ -98,21 +98,27 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
 pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link: &str) -> bool {
 
     if !task_store.contains_key(&key) {
-
-        error!("client_send_link_to_text_request");
+        info!("Sending request to link-to-text service for key {}", key);
         let result: anyhow::Result<LinkToTextResultIPC> = client_send_link_to_text_request("./tmp/rust_link_to_text_socket", link.to_owned());
-        error!("LinkToTextResult: {:?}",result);
-
-        let result: Maybe<ResponseResult> = Maybe {
-            data: match result {
-                Ok(data) => Ok(ResponseResult::LinkToTextResult(LinkToTextResult::new(link,data.text_nodes,data.hierarchical_segmentation,300))),
-                Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
+        match result {
+            Ok(data) => {
+                info!("Successfully obtained LinkToTextResult for key {}", key);
+                let response_result = Maybe {
+                    data: Ok(ResponseResult::LinkToTextResult(LinkToTextResult::new(link, data.text_nodes, data.hierarchical_segmentation, 300))),
+                    timestamp: Utc::now().timestamp(),
+                };
+                if let Err(error) = task_store.push(&key, response_result) {
+                    error!("Failed to insert response result for key {}: {:?}", key, error);
+                }
+                true
             },
-            timestamp: Utc::now().timestamp(),
-        };
-        task_store.push(&key, result).ok();
-        true
+            Err(error) => {
+                error!("Failed to obtain LinkToTextResult for key {}: {:?}", key, error);
+                false
+            }
+        }
     }else{
+        info!("Key {} already exists in task store. Skipping insertion", key);
         false
     }
 }

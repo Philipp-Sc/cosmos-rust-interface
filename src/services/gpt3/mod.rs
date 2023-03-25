@@ -162,7 +162,7 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
             })),
             timestamp: Utc::now().timestamp(),
         };
-        error!("insert_progress: {:?}",progress);
+        info!("insert_progress: {:?}",progress);
 
         keys.push(key.to_owned());
         task_store.push(&key, progress).ok();

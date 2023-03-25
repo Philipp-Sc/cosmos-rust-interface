@@ -98,7 +98,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                             })),
                             timestamp: Utc::now().timestamp(),
                         };
-                        error!("RustBertFraudDetectionProgress: {:?}",result);
+                        info!("RustBertFraudDetectionProgress: {:?}",result);
 
                         keys.push(key.to_owned());
                         task_store.push(&key,result).ok();
