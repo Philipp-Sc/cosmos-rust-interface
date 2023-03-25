@@ -121,24 +121,29 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let (title, description) = each.get_title_and_description();
                         let text = format!("{}/n{}", title, description);
 
-                        if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
-                            info!("Successfully retrieved context from description and community link to text results for prompt.");
-                            debug!("Context:\n{:?}", context);
+                        match retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
+                            Ok(context) => {
+                                info!("Successfully retrieved context from description and community link to text results for prompt.");
+                                debug!("Context:\n{:?}", context);
 
 
-                            let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
-                            let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                            let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 150u16);
-                            insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
-                            info!("Inserted GPT-3 chat completion result for briefing 0.");
-                            /*
-                            for i in 0..8 {
-                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
-                                let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
+                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
+                                let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 150u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
+                                info!("Inserted GPT-3 chat completion result for {}",key_for_hash);
+                                /*
+                                for i in 0..8 {
+                                    let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
+                                    let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
+                                    let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
+                                    insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
+                                }
+                                 */
                             }
-                             */
+                            Err(err) => {
+                                error!("Failed to retrieve context from description and community link to text results for prompt: {}", err.to_string());
+                            }
                         }
                     }
                 }
