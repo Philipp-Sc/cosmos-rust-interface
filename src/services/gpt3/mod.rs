@@ -181,23 +181,19 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
 
 pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, text_triggers: Vec<String>) -> anyhow::Result<String> {
 
-
-    let mut linked_text_result = retrieve_community_link_to_text_result(&task_store,description)?;
-
-    let prompt_text_result =  LinkToTextResult{
+    let prompt_text_result = LinkToTextResult{
         link: "text_triggers".to_string(),
         text_nodes: text_triggers,
         hierarchical_segmentation: vec![vec![true]]
     };
     let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
-
     let mut linked_text = vec![description_text_result];
 
-    match linked_text_result {
-        Some(item) => {
+    match retrieve_community_link_to_text_result(&task_store,description) {
+        Ok(Some(item)) => {
             linked_text.push(item);
         },
-        None => {
+        _ => {
             linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
         }
     };
@@ -288,11 +284,11 @@ pub fn retrieve_all_link_to_text_results(task_store: &TaskMemoryStore, descripti
                 Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
                     linked_text.push(link_to_text_result);
                 }
-                Ok(Maybe { data: Err(_), .. }) => {
-                    // skipping
+                Ok(Maybe { data: Err(err), .. }) => {
+                    error!("Skipping result for: {}, reported error: {}",&extracted_links[i], err.to_string());
                 }
                 Err(err) => {
-                    return Err(anyhow::anyhow!(err));
+                    error!("Skipping result for: {}, reported error: {}",&extracted_links[i], err.to_string());
                 }
                 _ => {
                     return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
