@@ -113,8 +113,15 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
                 true
             },
             Err(error) => {
+                let response_result = Maybe {
+                    data: Err(MaybeError::AnyhowError(error.to_string())),
+                    timestamp: Utc::now().timestamp(),
+                };
+                if let Err(error) = task_store.push(&key, response_result) {
+                    error!("Failed to insert response result for key {}: {:?}", key, error);
+                }
                 error!("Failed to obtain LinkToTextResult for key {}: {:?}", key, error);
-                false
+                true
             }
         }
     }else{

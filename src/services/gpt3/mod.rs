@@ -367,7 +367,7 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     if task_store.contains_key(&fraud_detection_key_for_hash) {
         match task_store.get::<ResponseResult>(&fraud_detection_key_for_hash, &RetrievalMethod::GetOk) {
             Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification { fraud_prediction, .. })), .. }) => {
-                if fraud_prediction < 0.4 {
+                if fraud_prediction < 0.5 {
                     return true;
                 }else {
                     return false;
