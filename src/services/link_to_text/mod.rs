@@ -113,7 +113,7 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
                 true
             },
             Err(error) => {
-                let response_result = Maybe {
+                let response_result: Maybe<ResponseResult> = Maybe {
                     data: Err(MaybeError::AnyhowError(error.to_string())),
                     timestamp: Utc::now().timestamp(),
                 };
