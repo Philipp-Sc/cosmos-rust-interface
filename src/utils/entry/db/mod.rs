@@ -108,7 +108,7 @@ impl TaskMemoryStore {
         let value = match retrieval_method {
             RetrievalMethod::Get => {
                 let key = format!("key_{}_rev_{}",key,index);
-                debug!("Get: {},", key);
+                trace!("Get: {},", key);
                 let item: Option<IVec> = self.0.get(key.as_bytes().to_vec())?;
                 Ok(match item {
                     Some(val) => {
@@ -123,7 +123,7 @@ impl TaskMemoryStore {
             RetrievalMethod::GetOk => {
                 for i in (0..=index).rev() {
                     let key = format!("key_{}_rev_{}",key,i);
-                    debug!("GetOk: {}", key);
+                    trace!("GetOk: {}", key);
                     let item: Option<IVec> = self.0.get(key.as_bytes().to_vec())?;
                     match item {
                         Some(val) => {
@@ -140,7 +140,7 @@ impl TaskMemoryStore {
                 Err(anyhow::anyhow!("Error: no ok value found for key {}",key))
             }
         };
-        debug!("{:?}: key: {:?}, value: {}", retrieval_method, key,match &value { Ok(v) => serde_json::to_string_pretty(v).unwrap_or("Formatting Error".to_string()), Err(e) => e.to_string()});
+        trace!("{:?}: key: {:?}, value: {}", retrieval_method, key,match &value { Ok(v) => serde_json::to_string_pretty(v).unwrap_or("Formatting Error".to_string()), Err(e) => e.to_string()});
         value
     }
 
@@ -173,7 +173,7 @@ impl TaskMemoryStore {
             Some(None) => false,
             None => false
         };
-        info!("contains_key: key: {}, value: {:?}", key, res);
+        trace!("contains_key: key: {}, value: {:?}", key, res);
         res
     }
 
@@ -182,14 +182,14 @@ impl TaskMemoryStore {
         where
             T: for<'a> Deserialize<'a> + Serialize
     {
-        info!("remove_historic_entries: key: {}, max_index: {}", key, max_index);
+        trace!("remove_historic_entries: key: {}, max_index: {}", key, max_index);
         let smallest_required_index = self.get_index_of_ok_result::<T>(key, max_index).unwrap_or(max_index);
         for i in (0..smallest_required_index).rev() {
             if self.0.remove(format!("key_{}_rev_{}",&key,i).as_bytes().to_vec())?.is_none(){
-                info!("key does not exist: key: {}, index: {}", key, i);
+                trace!("key does not exist: key: {}, index: {}", key, i);
                 break;
             }else{
-                info!("removed: key: {}, index: {}", key, i);
+                trace!("removed: key: {}, index: {}", key, i);
             }
         }
         Ok(())
@@ -203,20 +203,20 @@ impl TaskMemoryStore {
         where
             T: for<'a> Deserialize<'a> + Serialize
     {
-        info!("push key: key: {}", key);
-        debug!("push key: value: {}", serde_json::to_string_pretty(&value).unwrap_or("Formatting Error".to_string()));
+        trace!("push key: key: {}", key);
+        trace!("push key: value: {}", serde_json::to_string_pretty(&value).unwrap_or("Formatting Error".to_string()));
         let current_rev: Option<IVec> = self.0.get(format!("{}{}", REV_INDEX_PREFIX, key).as_bytes().to_vec())?;
         let next_index = match current_rev {
             Some(val) => u64::from_be_bytes(val.to_vec()[..].try_into()?).overflowing_add(1),
             None => (0u64,false)
         };
         if next_index.1 { // in case of an overflow, the complete key history is wiped.
-            info!("push key: {}, overflow: {:?}", key, next_index);
+            trace!("push key: {}, overflow: {:?}", key, next_index);
             for i in (0..=u64::MAX).rev() {
                 if self.0.remove(format!("key_{}_rev_{}",key,i).as_bytes().to_vec())?.is_none(){
                     break;
                 }else{
-                    info!("removed: key: {}, index: {}", key, i);
+                    trace!("removed: key: {}, index: {}", key, i);
                 }
             }
         }
