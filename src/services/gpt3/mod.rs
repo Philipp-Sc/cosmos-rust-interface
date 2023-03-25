@@ -122,13 +122,15 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                         let text = format!("{}/n{}", title, description);
 
                         if let Ok(context) = retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
-                            error!("CONTEXT:\n{:?}",context);
+                            info!("Successfully retrieved context from description and community link to text results for prompt.");
+                            debug!("Context:\n{:?}", context);
+
 
                             let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                             let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
                             let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 150u16);
                             insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
-
+                            info!("Inserted GPT-3 chat completion result for briefing 0.");
                             /*
                             for i in 0..8 {
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
@@ -381,10 +383,10 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
 pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store: &TaskMemoryStore, key: &str, system: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
     if !task_store.contains_key(&key) {
-        
-        error!("client_send_openai_gpt_text_completion_request");
+
+        info!("Requesting OpenAI GPT Chat Completion for key '{}'", key);
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", system.to_owned(), prompt.to_owned(), completion_token_limit);
-        error!("result: {:?}",result);
+        debug!("Received response from OpenAI GPT: {:?}", result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
@@ -410,6 +412,7 @@ pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store
             timestamp: Utc::now().timestamp(),
         };
         task_store.push(&key, result).ok();
+        debug!("Stored OpenAI GPT embedding result for key '{}'", key);
         true
     }else{
         false
@@ -419,9 +422,9 @@ pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store
 pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> anyhow::Result<OpenAIGPTEmbeddingResult> {
 
     if !task_store.contains_key(key) {
-        error!("client_send_openai_gpt_embedding_request");
+        info!("Requesting OpenAI GPT embedding for key '{}'", key);
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
-        error!("result: {:?}",result);
+        debug!("Received response from OpenAI GPT: {:?}", result);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: match result {
@@ -431,6 +434,7 @@ pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(ta
             timestamp: Utc::now().timestamp(),
         };
         task_store.push(key, result)?;
+        debug!("Stored OpenAI GPT embedding result for key '{}'", key);
     }
     match task_store.get::<ResponseResult>(key, &RetrievalMethod::GetOk) {
         Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(embedding_result))), .. }) => {

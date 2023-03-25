@@ -8,7 +8,7 @@ use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, ProposalDataResult};
 
 use serde::{Deserialize,Serialize};
-use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTResult, OpenAIGPTTextCompletionResult};
+use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTResult, OpenAIGPTChatCompletionResult};
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::gpt3::get_key_for_gpt3;
 
@@ -70,7 +70,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 for i in 0..10 {
                     let gpt3_result_briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::TextCompletionResult(OpenAIGPTTextCompletionResult { result, .. }))), .. }) => {
+                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
                             Some(result)
                         }
                         Err(_) => { None }
