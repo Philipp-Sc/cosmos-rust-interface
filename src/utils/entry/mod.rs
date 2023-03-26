@@ -435,7 +435,7 @@ impl ProposalData {
   <script>
     const fraudRisk = {};
     const depositPeriod = {};
-    const summary = \"{}\";
+    const summary = {:?};
     {}
 </script>
 <footer>
