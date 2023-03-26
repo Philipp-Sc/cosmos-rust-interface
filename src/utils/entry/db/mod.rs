@@ -5,7 +5,7 @@ pub mod socket;
 use sled::IVec;
 use std::path::PathBuf;
 
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 
 use crate::utils::entry::Entry;
 use crate::utils::entry::Subscription;
@@ -21,6 +21,7 @@ use crate::utils::entry::db::query::socket::spawn_socket_query_server;
 use std::collections::HashMap;
 use crate::utils::response::ResponseResult;
 use chrono::Utc;
+use serde_json::json;
 use tokio::time::{sleep, Duration};
 use crate::utils::entry::ValueImperative::Notify;
 
@@ -534,11 +535,32 @@ impl CosmosRustBotStore {
         for item in &items {
 
             match item {  // insert updated entries/indices (hash/key changed)
-                CosmosRustBotValue::Entry(_) => {
+                CosmosRustBotValue::Entry(entry) => {
                     let key =item.key();
                     let value: Vec<u8> = item.clone().try_into().unwrap();
                     if let Ok(false) = self.entry_store.0.db.contains_key(&key) {
                         self.entry_store.0.db.insert(&key, value).ok();
+
+                        if let Entry::Value(Value { timestamp: _, origin: _, custom_data: CustomData::ProposalData(proposal_data), imperative: _ }) = entry.clone() {
+                            // filesystem sync of generated files for proposal data
+                            if let Some(proposal_id) = proposal_data.proposal_id {
+                                // write governance proposal as HTML page
+                                let file_path = format!("./tmp/governance_proposals/{}/{}.html", proposal_data.proposal_blockchain.to_lowercase(), proposal_id);
+                                match std::fs::write(&file_path, proposal_data.generate_html()) {
+                                    Ok(_) => {},
+                                    Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
+                                };
+                                // write the fraud prediction to a JSON
+                                let file_path = format!("./tmp/fraud_detection/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_id);
+                                let json_string = json!({"title": proposal_data.proposal_title, "description": proposal_data.proposal_description, "fraud_prediction": proposal_data.fraud_risk}).to_string();
+                                match std::fs::write(&file_path, json_string) {
+                                    Ok(_) => {},
+                                    Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
+                                };
+                            }else{
+                                error!("Something went wrong: proposal_id undefined! {:?}", proposal_data);
+                            }
+                        }
                     }
                 },
                 CosmosRustBotValue::Index(_) => {

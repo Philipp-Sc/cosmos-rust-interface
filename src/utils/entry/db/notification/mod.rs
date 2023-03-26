@@ -148,12 +148,13 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                     ("🏛 ️Proposal".to_string(), command),
                                                 );
                                             }
-                                            */
+
                                             if let Some(command) = custom_data.command("briefing0") {
                                                 navigation_row.push(
                                                     ("⚡ Start Briefing".to_string(), command),
                                                 );
                                             }
+                                            */
 
                                             if let Some(link) = custom_data.view_in_browser() {
                                                 navigation_row2.push(

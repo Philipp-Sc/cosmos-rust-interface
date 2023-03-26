@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashSet};
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::convert::From;
 
@@ -125,7 +125,8 @@ impl CustomData {
     fn briefing_display(&self, index: usize) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_briefings[index].to_owned()
+                //o.proposal_briefings[index].to_owned()
+                "".to_string()
             },
             _ => {
                 "Error: Can not display summary for self.".to_string()
@@ -150,7 +151,8 @@ impl CustomData {
             _ => {
                 if display.contains("briefing") {
                     let briefing_index = display["briefing".len()..].to_string().parse::<u8>().unwrap_or(0u8);
-                    self.briefing_display(briefing_index as usize)
+                    "briefing_display deprecatd".to_string()
+                    //self.briefing_display(briefing_index as usize)
                 }else{
                     self.default_display()
                 }
@@ -207,9 +209,296 @@ pub struct ProposalData {
     pub proposal_title: String,
     pub proposal_description: String,
     pub proposal_vetoed: bool,
-    pub proposal_briefings: Vec<String>,
+    pub proposal_gpt_completions: Vec<(String,String)>,
     pub proposal_content: String,
     pub proposal_state: String,
+    pub proposal_in_deposit_period: bool,
+    pub fraud_risk: String,
+    pub proposal_status_icon: String,
+}
+
+impl ProposalData {
+
+    pub fn generate_html(&self) -> String {
+
+        let css_style = r#"body {
+                  font-family: Arial, sans-serif;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #1d2021;
+                  color: #d8dee9;
+                }
+                .container {
+                  width: 80%;
+                  margin: 50px auto;
+                  padding: 30px;
+                  background-color: #2e3440;
+                  border-radius: 5px;
+                }
+                .title {
+                  text-align: center;
+                  font-size: 36px;
+                  margin-top: 0;
+                  background-color: #3b4252;
+                  padding: 20px;
+                  border-radius: 5px 5px 0 0;
+                  color: #88C0D0;
+
+                }
+                .description {
+                  margin-top: 30px;
+                  background-color: #3b4252;
+                  padding: 20px;
+                  border-radius: 0 0 5px 5px;
+                }
+                span {
+                  font-size: 18px;
+                  line-height: 1.5;
+                  margin-top: 20px;
+                }
+                span {
+                  font-size: 18px;
+                  line-height: 1.5;
+                  margin-top: 20px;
+                }
+                .button {
+                  display: inline-block;
+                  padding: 10px 20px;
+                  font-size: 18px;
+                  margin-top: 30px;
+                  border-radius: 5px;
+                  transition: background-color 0.3s ease;
+                  border: none;
+                  background-color: #5c616c;
+                  color: #d8dee9;
+                }
+                .button:hover {
+                  background-color: #373b41;
+                  cursor: pointer;
+                }
+                .alert {
+                  background-color: #dc3545;
+                  padding: 10px;
+                  text-align: center;
+                  margin-top: 20px;
+                  color: #fff;
+                  border-radius: 5px;
+                  font-size: 16px;
+                  font-weight: bold;
+                }
+                .warning {
+                  background-color: #ffc107;
+                  padding: 10px;
+                  text-align: center;
+                  margin-top: 20px;
+                  color: #212529;
+                  border-radius: 5px;
+                  font-size: 16px;
+                  font-weight: bold;
+                }
+                .info {
+                  background-color: #5e81ac;
+                  padding: 10px;
+                  text-align: center;
+                  margin-top: 20px;
+                  color: #d8dee9;
+                  border-radius: 5px;
+                  font-size: 16px;
+                  font-weight: bold;
+                }
+                .description {
+                  margin-top: 30px;
+                }
+                .description span {
+                  display: inline-block;
+                  max-height: 100px;
+                  overflow: hidden;
+                  width: 100%;
+                }
+                .show-more {
+                  margin-top: 10px;
+                  text-align: center;
+                }
+                .show-more button {
+                  background-color: transparent;
+                  border: none;
+                  color: #5c616c;
+                  cursor: pointer;
+                  text-decoration: underline;
+                  font-size: 16px;
+                }
+                .show-more button:hover {
+                  color: #373b41;
+                }
+                footer {
+                  text-align: center;
+                  margin-top: 50px;
+                  font-size: 16px;
+                  color: #6c8d9b;
+                  background-color: #1c2331;
+                  padding: 10px;
+                }
+                footer a {
+                  color: #8ec07c;
+                  text-decoration: none;
+                }
+                footer a:hover {
+                  color: #ebdbb2;
+                }
+                .button-container {
+                  text-align: center;
+                  margin-top: 50px;
+            }
+                .button-container button {
+                  display: inline-block;
+                  padding: 10px 20px;
+                  font-size: 18px;
+                  margin: 0 10px;
+                  border-radius: 5px;
+                  transition: background-color 0.3s ease;
+                  border: none;
+                  background-color: #5c616c;
+                  color: #d8dee9;
+                }
+                .button-container button:hover {
+                  background-color: #373b41;
+                  cursor: pointer;
+                }
+
+                #status-btn {
+                  padding: 10px;
+                  background-color: #2E3440;
+                  color: white;
+                  border: none;
+                  cursor: pointer;
+                }
+
+                #status-btn:hover {
+                  background-color: #3B4252;
+                }
+
+                #status-btn:active {
+                  background-color: #4C566A;
+                }
+
+                #status-text {
+                  display: none;
+                  padding: 10px;
+                  background-color: #4C566A;
+                  color: white;
+                  border: 1px solid #D8DEE9;
+                }
+        "#;
+
+        let mut summary = "";
+        for (key, value) in &self.proposal_gpt_completions {
+            if key == "summary" {
+                summary = value;
+                break;
+            }
+        }
+
+        format!(
+            "<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset=\"UTF-8\">
+          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+          <title>#{}</title>
+          <style>
+               {}
+          </style>
+        </head>
+       <div class=\"container\">
+    <h3 class=\"title\" >{}</h3>
+
+    <h2>{}</h2>
+    <h2>#{} - {}</h2>
+    <h3>{}</h3>
+    <div id=\"summary\"></div>
+    <div class=\"description\">
+      <span style=\"white-space: pre-wrap\">{}</span>
+      <div class=\"show-more\">
+        <button id=\"show-more-btn\">Show More</button>
+      </div>
+    </div>
+    <div id=\"fraud-alert\"></div>
+    <div class=\"button-container\">
+  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
+  <button id=\"status-btn\" onclick=\"toggleStatus()\">📝 Start Briefing</button>
+  <button id=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
+
+  <div id=\"status-text\" style=\"display: none;\">{}</div>
+</div>
+
+  </div>
+  <script>
+    const fraudRisk = {};
+    const depositPeriod = {};
+    const summary = \"{}\";
+    {}
+</script>
+<footer>
+  This website was created by <a href=\"\"> CosmosRustBot</a>. All rights reserved.
+</footer>
+
+  </body>
+        </html>",
+            self.proposal_id.unwrap_or(0),
+            css_style,
+            self.proposal_blockchain,
+            self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string()),
+            self.proposal_id.unwrap_or(0),
+            self.proposal_status_icon,
+            self.proposal_title,
+            self.proposal_description,
+            self.proposal_link,
+            self.proposal_state,
+            self.fraud_risk,
+            self.proposal_in_deposit_period.to_string(),
+            summary,
+            r#"
+            function toggleStatus() {
+              var statusText = document.getElementById("status-text");
+              if (statusText.style.display === "none") {
+                statusText.style.display = "block";
+              } else {
+                statusText.style.display = "none";
+              }
+            }
+
+            const summaryDiv = document.createElement('div');
+                summaryDiv.classList.add('info');
+                summaryDiv.innerText = summary;
+                document.getElementById('summary').appendChild(summaryDiv);
+            }
+
+            if (fraudRisk > 0.7) {
+                const alertDiv = document.createElement('div');
+                alertDiv.classList.add('alert');
+                alertDiv.innerText = '🚨 ALERT: High fraud risk. Be careful, avoid suspicious links/URLs, and remember, if it seems too good to be true, it probably is. 🚨';
+                document.getElementById('fraud-alert').appendChild(alertDiv);
+            } else if (fraudRisk > 0.4) {
+                const warningDiv = document.createElement('div');
+                warningDiv.classList.add('warning');
+                warningDiv.innerText = '⚠ WARNING: Verify URLs and proposal before interacting. Stay safe! ⚠';
+                document.getElementById('fraud-alert').appendChild(warningDiv);
+            }
+            else if (depositPeriod) {
+                const warningDiv = document.createElement('div');
+                warningDiv.classList.add('warning');
+                warningDiv.innerText = '⚠ CAUTION: Higher fraud risk during deposit period. Verify URLs and proposals before interacting. Stay safe! ⚠';
+                document.getElementById('fraud-alert').appendChild(warningDiv);
+            }
+  const showMoreBtn = document.getElementById('show-more-btn');
+  const description = document.querySelector('.description span');
+  showMoreBtn.addEventListener('click', () => {
+    description.style.maxHeight = 'none';
+    showMoreBtn.style.display = 'none';
+  });"#
+        )
+    }
+
 }
 
 impl GetField for ProposalData {}
