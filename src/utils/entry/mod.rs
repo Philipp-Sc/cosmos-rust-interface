@@ -468,10 +468,10 @@ impl ProposalData {
             }
 
             const summaryDiv = document.createElement('div');
-                summaryDiv.classList.add('info');
-                summaryDiv.innerText = summary;
-                document.getElementById('summary').appendChild(summaryDiv);
-            }
+            summaryDiv.classList.add('info');
+            summaryDiv.innerText = summary;
+            document.getElementById('summary').appendChild(summaryDiv);
+
 
             if (fraudRisk > 0.7) {
                 const alertDiv = document.createElement('div');
