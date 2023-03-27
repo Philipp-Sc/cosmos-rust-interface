@@ -388,6 +388,64 @@ impl ProposalData {
                   color: white;
                   border: 1px solid #D8DEE9;
                 }
+
+                .dropdown {
+                  position: relative;
+                  display: inline-block;
+                }
+
+                .dropdown-btn {
+                  background-color: #5c616c;
+                  color: #d8dee9;
+                  font-size: 18px;
+                  padding: 10px 20px;
+                  border-radius: 5px;
+                  border: none;
+                  cursor: pointer;
+                }
+
+                .dropdown-btn:hover {
+                  background-color: #373b41;
+                }
+
+                .dropdown-content {
+                  display: none;
+                  position: absolute;
+                  z-index: 1;
+                  top: 100%;
+                  left: 0;
+                  min-width: 300px;
+                  background-color: #2e3440;
+                  border-radius: 5px;
+                  padding: 10px;
+                  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+                }
+
+                .dropdown-content a {
+                  display: block;
+                  color: #d8dee9;
+                  font-size: 16px;
+                  padding: 5px 10px;
+                  text-decoration: none;
+                }
+
+                .dropdown-content a:hover {
+                  background-color: #3b4252;
+                }
+
+                .dropdown:hover .dropdown-content {
+                  display: block;
+                }
+                span a {
+                  color: #7fdbff; /* light blue */
+                  text-decoration: none;
+                  border-bottom: 1px solid #7fdbff;
+                  transition: border-bottom 0.2s ease-in-out;
+                }
+
+                span a:hover {
+                  border-bottom: 2px solid #7fdbff;
+                }
         "#;
 
         let proposal_gpt_completions: HashMap<String, String> = self.proposal_gpt_completions
@@ -412,18 +470,26 @@ impl ProposalData {
     <h2>{}</h2>
     <h2>#{} - {}</h2>
     <h3>{}</h3>
+
+<div class=\"dropdown\">
+  <button class=\"dropdown-btn\">Briefing topic: </button><span id=\"topic\"> 📋 Overview</span>
+  <div class=\"dropdown-content\">
+    <a href=\"#\" onclick=\"toggleMsg(this, 'summary')\">📋 Overview</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'problem')\">❓ Problem</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'risks')\">⚠ Risks or downsides</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'viability')\">🛠 Feasibility and viability</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'economic_impact')\">💸 Economic impact</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'legal')\">⚖ Legal compliance</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'sustainability')\">🌿 Sustainability</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'accountability')\">🔎 Transparency and accountability</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'community_support')\">👥 Community Support</a>
+  </div>
+</div>
+
     <div id=\"summary\"></div>\
-    <button id=\"status-btn\" onclick=\"toggleMsg('summary')\">Summary</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('problem')\">❓ What problem is it solving?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('risks')\">⚠ Risks or downsides?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('viability')\">🛠 Feasible and viable?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('economic impact')\">💸 Economic impact?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('legal')\">⚖ Legally compliant?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('sustainability')\">🌿 Sustainable</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('accountability')\">🔎 Transparent and accountable?</button>
-    <button id=\"status-btn\" onclick=\"toggleMsg('community support')\">👥 Community Support?</button>
+
     <div class=\"description\">
-      <span style=\"white-space: pre-wrap\">{}</span>
+      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
       <div class=\"show-more\">
         <button id=\"show-more-btn\">Show More</button>
       </div>
@@ -438,7 +504,15 @@ impl ProposalData {
 </div>
 
   </div>
+  <script src=\"https://unpkg.com/showdown/dist/showdown.min.js\"></script>
   <script>
+  var converter = new showdown.Converter();
+  converter.setFlavor('github');
+  const markdownText = document.getElementById('description');
+  const htmlText = converter.makeHtml(markdownText.innerHTML);
+  console.log(htmlText);
+  markdownText.innerHTML = htmlText;
+
     const fraudRisk = {};
     const depositPeriod = {};
     const proposal_data = {};
@@ -484,7 +558,11 @@ impl ProposalData {
             proposal_gpt_completions.get("community support").unwrap_or(&"".to_string())
             ),
             r#"
-            function toggleMsg(key) {
+            function toggleMsg(link, key) {
+
+              var message = link.innerHTML;
+              document.getElementById("topic").innerHTML = message;
+
               var msgText = document.getElementsByClassName("info")[0];
               msgText.innerText = proposal_data[key];
             }
