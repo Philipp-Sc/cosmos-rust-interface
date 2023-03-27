@@ -237,10 +237,9 @@ impl ProposalData {
                 }
                 .title {
                   text-align: center;
-                  font-size: 36px;
                   margin-top: 0;
                   background-color: #3b4252;
-                  padding: 20px;
+                  padding: 5px;
                   border-radius: 5px 5px 0 0;
                   color: #88C0D0;
 
@@ -464,12 +463,21 @@ impl ProposalData {
                {}
           </style>
         </head>
+
+    <div id=\"fraud-alert\"></div>
        <div class=\"container\">
     <h3 class=\"title\" >{}</h3>
 
     <h2>{}</h2>
     <h2>#{} - {}</h2>
     <h3>{}</h3>
+
+    <div class=\"description\">
+      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
+      <div class=\"show-more\">
+        <button id=\"show-more-btn\">Show More</button>
+      </div>
+    </div>
 
 <div class=\"dropdown\">
   <button class=\"dropdown-btn\">Briefing topic: </button><span id=\"topic\"> 📋 Overview</span>
@@ -486,15 +494,10 @@ impl ProposalData {
   </div>
 </div>
 
+</br>
+
     <div id=\"summary\"></div>\
 
-    <div class=\"description\">
-      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
-      <div class=\"show-more\">
-        <button id=\"show-more-btn\">Show More</button>
-      </div>
-    </div>
-    <div id=\"fraud-alert\"></div>
     <div class=\"button-container\">
   <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
   <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Show Votes</button>
