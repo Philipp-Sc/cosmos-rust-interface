@@ -27,8 +27,9 @@ Make sure the string really exist within the given source."#;
 
 const SYSTEM_SUMMARY: &str = r#"Fraud detection refuses suspicious content without explanation.
 No unfounded assumptions are made.
-JimBrowning, Coffeezilla, DigitalBytes.
+JimBrowning, Coffeezilla.
 Guideline:
+First principles.
 Let's think step by step. "#;
 
 const TOPICS_FOR_EMBEDDING: [&str;3] = [
@@ -38,7 +39,7 @@ const TOPICS_FOR_EMBEDDING: [&str;3] = [
 ];
 
 const PROMPTS: [&str;3] = [
-            "Provide a brief neutral overview of this governance proposal.",
+            "Provide a quick overview of this governance proposal.",
             "List of this governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
             "Extract the link leading to the community discussion/forum for this proposal.",
                ];
@@ -129,7 +130,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 150u16);
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 200u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
                                 if insert_result {
                                     info!("Inserted GPT-3 chat completion result for {}",&key_for_hash);

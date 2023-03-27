@@ -390,13 +390,10 @@ impl ProposalData {
                 }
         "#;
 
-        let mut summary = "";
-        for (key, value) in &self.proposal_gpt_completions {
-            if key == "summary" {
-                summary = value;
-                break;
-            }
-        }
+        let proposal_gpt_completions: HashMap<String, String> = self.proposal_gpt_completions
+            .iter()
+            .cloned()
+            .collect();
 
         format!(
             "<!DOCTYPE html>
@@ -415,7 +412,16 @@ impl ProposalData {
     <h2>{}</h2>
     <h2>#{} - {}</h2>
     <h3>{}</h3>
-    <div id=\"summary\"></div>
+    <div id=\"summary\"></div>\
+    <button id=\"status-btn\" onclick=\"toggleMsg('summary')\">Summary</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('problem')\">❓ What problem is it solving?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('risks')\">⚠ Risks or downsides?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('viability')\">🛠 Feasible and viable?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('economic impact')\">💸 Economic impact?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('legal')\">⚖ Legally compliant?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('sustainability')\">🌿 Sustainable</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('accountability')\">🔎 Transparent and accountable?</button>
+    <button id=\"status-btn\" onclick=\"toggleMsg('community support')\">👥 Community Support?</button>
     <div class=\"description\">
       <span style=\"white-space: pre-wrap\">{}</span>
       <div class=\"show-more\">
@@ -425,7 +431,7 @@ impl ProposalData {
     <div id=\"fraud-alert\"></div>
     <div class=\"button-container\">
   <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
-  <button id=\"status-btn\" onclick=\"toggleStatus()\">📝 Start Briefing</button>
+  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Show Votes</button>
   <button id=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
 
   <div id=\"status-text\" style=\"display: none;\">{}</div>
@@ -435,7 +441,7 @@ impl ProposalData {
   <script>
     const fraudRisk = {};
     const depositPeriod = {};
-    const summary = {:?};
+    const proposal_data = {};
     {}
 </script>
 <footer>
@@ -456,8 +462,32 @@ impl ProposalData {
             self.proposal_state,
             self.fraud_risk,
             self.proposal_in_deposit_period.to_string(),
-            summary,
+            format!("{{
+              summary: {:?},
+              problem: {:?},
+              risks: {:?},
+              viability: {:?},
+              economic_impact: {:?},
+              legal: {:?},
+              sustainability: {:?},
+              accountability: {:?},
+              community_support: {:?},
+            }};",
+            proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("problem").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("risks").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("viability").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("economic impact").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("legal").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("sustainability").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("accountability").unwrap_or(&"".to_string()),
+            proposal_gpt_completions.get("community support").unwrap_or(&"".to_string())
+            ),
             r#"
+            function toggleMsg(key) {
+              var msgText = document.getElementsByClassName("info")[0];
+              msgText.innerText = proposal_data[key];
+            }
             function toggleStatus() {
               var statusText = document.getElementById("status-text");
               if (statusText.style.display === "none") {
@@ -469,7 +499,7 @@ impl ProposalData {
 
             const summaryDiv = document.createElement('div');
             summaryDiv.classList.add('info');
-            summaryDiv.innerText = summary;
+            summaryDiv.innerText = proposal_data['summary'];
             document.getElementById('summary').appendChild(summaryDiv);
 
 

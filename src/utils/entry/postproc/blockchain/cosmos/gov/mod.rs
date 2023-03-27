@@ -77,10 +77,15 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         _ => { None }
                     };
                     if i == 0 {
-                        briefings.push(("summary".to_string(),format!("⚡ AI-Generated Briefing\n\n{}\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.", gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim())));
+                        let content = if let Some(completion) = gpt3_result_briefing {
+                            format!("⚡ AI-Generated Briefing\n\n{}\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.",completion.trim())
+                        }else{
+                            "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".trim().to_string()
+                        };
+                        briefings.push(("summary".to_string(),content.to_string()));
                     }
                     else{
-                        briefings.push(("other".to_string(),format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim())));
+                        //briefings.push(("other".to_string(),format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim())));
                     }
                 }
 
@@ -105,7 +110,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         proposal_description: proposal.get_title_and_description().1,
                         proposal_vetoed: proposal.proposal().map(|x| x.final_tally_result.map(|y| y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.yes.parse::<f64>().unwrap_or(0f64) && y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.no.parse::<f64>().unwrap_or(0f64))).flatten().unwrap_or(false),
                         proposal_in_deposit_period: proposal.status == ProposalStatus::StatusDepositPeriod,
-                        fraud_risk: fraud_classification.unwrap_or(1.0).to_string(),
+                        fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
                         proposal_status_icon: proposal.status.to_icon(),
 
                 };
