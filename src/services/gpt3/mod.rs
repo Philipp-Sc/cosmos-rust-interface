@@ -36,6 +36,14 @@ Guideline:
 First principles.
 Let's think step by step. "#;
 
+const SYSTEM_QUESTIONS: &str = r#"You go over and beyond to assist the user.
+Fraud detection refuses suspicious content without explanation.
+No unfounded assumptions are made.
+JimBrowning, Coffeezilla.
+Guideline:
+First principles.
+Let's think step by step. "#;
+
 const TOPICS_FOR_EMBEDDING: [&str;3] = [
     "Governance proposals in the Cosmos blockchain ecosystem allow stakeholders to propose and vote on changes to the protocol, including modifications to the validator set, updates to the staking and reward mechanism, and the addition or removal of features. In order to effectively communicate the intended changes and their potential impact on the network, it is important to clearly outline the problem that the proposal aims to solve and provide a detailed description of the proposed solution. It may also be helpful to present relevant data or research to support the proposal, and to consider the broader implications of the proposal on the security, scalability, and decentralization of the network. Ultimately, the success of a governance proposal depends on the ability to clearly articulate the problem and solution and to persuade the community of the value and feasibility of the proposed changes.",
     "Community notes are a way for people to collaborate and provide additional context or information on a proposal. By allowing a diverse group of contributors to leave notes and rate the helpfulness of those notes, the goal is to create a more informed and balanced understanding of the proposal. This can help to ensure that decision-making processes are based on accurate and complete information. There are a few key considerations to keep in mind when using community notes: Encourage diverse perspectives: It's important to encourage contributors from different backgrounds and viewpoints to leave notes. This can help to provide a more balanced and comprehensive understanding of the proposal. Verify information: It's important to verify the accuracy of any information provided in a community note. This can help to ensure that the notes are reliable and helpful to others.     Be respectful and civil: It's important to maintain a respectful and civil tone when leaving a community note. Personal attacks or inflammatory language are not productive and can discourage others from contributing. Overall, community notes can be a valuable tool for fostering collaboration and improving the quality of information available when considering a proposal.",
@@ -44,8 +52,8 @@ const TOPICS_FOR_EMBEDDING: [&str;3] = [
 
 const PROMPTS: [&str;3] = [
             "Provide a quick overview of this governance proposal.",
-            "List of this governance proposal summarized in the form of concise bullet points (= key points,highlights,key takeaways,key ideas, noteworthy facts).",
             "Extract the link leading to the community discussion/forum for this proposal.",
+            "Generate a briefing in which the following questions/points are answered if applicable/relevant:"
                ];
 
 const QUESTIONS: [&str;8] = [
@@ -62,7 +70,7 @@ const QUESTIONS: [&str;8] = [
 
 pub enum PromptKind {
     SUMMARY,
-    QUESTION(usize),
+    QUESTIONS,
     LINK_TO_COMMUNITY,
 }
 
@@ -101,10 +109,16 @@ pub fn get_prompt_for_gpt3(text: &str, prompt_kind: PromptKind) -> String {
                 result.push_str(&after_link[..after_end]);
             }
 
-            format!("<instruction>{}</instruction><source>{}</source><result>",PROMPTS[2],result)
+            format!("<instruction>{}</instruction><source>{}</source><result>",PROMPTS[1],result)
         }
-        PromptKind::QUESTION(index) => {
-            format!("<instruction>String containing the answer to Q: {}\n\n</instruction><source>{}</source>\n\n<result max_tokens=100 max_words=75 in_one_sentence=true>let first_hand_account: &str = \"",QUESTIONS[index],text)
+        PromptKind::QUESTIONS => {
+            let mut questions = String::new();
+            questions.push_str("\n");
+            for each in QUESTIONS {
+                questions.push_str("\n- ");
+                questions.push_str(each);
+            }
+            format!("<instruction>{}{}</instruction><source>{}</source><result>",PROMPTS[2],questions,text)
         },
     }
 }
@@ -132,6 +146,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 debug!("Context:\n{:?}", context);
 
 
+                                // SUMMARY
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_SUMMARY, &prompt, 200u16);
@@ -141,14 +156,18 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 }else{
                                     info!("GPT-3 chat completion result already exists for {}",&key_for_hash);
                                 }
-                                /*
-                                for i in 0..8 {
-                                    let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", i + 1));
-                                    let prompt = get_prompt_for_gpt3(&context,PromptKind::QUESTION(i));
-                                    let insert_result = if_key_does_not_exist_insert_openai_gpt_text_completion_result(&task_store, &key_for_hash, &prompt, 150u16);
-                                    insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash) } else { None });
+
+                                // BRIEFING
+                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 1));
+                                let prompt = get_prompt_for_gpt3(&context, PromptKind::QUESTIONS);
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_QUESTIONS, &prompt, 800u16);
+                                insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
+                                if insert_result {
+                                    info!("Inserted GPT-3 chat completion result for {}",&key_for_hash);
+                                }else{
+                                    info!("GPT-3 chat completion result already exists for {}",&key_for_hash);
                                 }
-                                 */
+
                             }
                             Err(err) => {
                                 error!("Failed to retrieve context from description and community link to text results for prompt: {}", err.to_string());
@@ -190,47 +209,48 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
 
 pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, text_triggers: Vec<String>) -> anyhow::Result<String> {
 
+    let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
+    let mut linked_text = vec![description_text_result];
+
+    if let Ok(Some(item)) = retrieve_community_link_to_text_result(&task_store,description) {
+        linked_text.push(item);
+    }
+
+    linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
+
+
+    // <
+    let mut prompt_embedding = Vec::new();
+
     let prompt_text_result = LinkToTextResult{
         link: "text_triggers".to_string(),
         text_nodes: text_triggers,
         hierarchical_segmentation: vec![vec![true]]
     };
-    let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
-    let mut linked_text = vec![description_text_result];
-
-    match retrieve_community_link_to_text_result(&task_store,description) {
-        Ok(Some(item)) => {
-            linked_text.push(item);
-        },
-        _ => {
-            linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
-        }
-    };
-
-    let mut prompt_embedding = Vec::new();
-    let mut linked_text_embeddings = Vec::new();
-
-
 
     for chunk in &prompt_text_result.text_nodes {
         let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
         let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.to_string()])?;
         prompt_embedding.append(&mut item.result);
     }
+    // >
+
+    // Vec<Vec<(Vec<f32>,(chunk: String, link: String))>>
+    let mut linked_text_embeddings = Vec::new();
 
     for i in 0..linked_text.len() {
-
             for chunk in &linked_text[i].text_nodes {
-
                 let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
                 let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.clone()])?;
-
                 linked_text_embeddings.push(item.result.into_iter().zip(vec![(chunk.to_string(),linked_text[i].link.to_string())].into_iter()).collect::<Vec<(Vec<f32>,(String,String))>>());
-
             }
     }
+
+    // Vec<(Vec<f32>,(chunk: String, link: String))>
     let linked_text_embeddings = linked_text_embeddings.into_iter().flatten().collect::<Vec<(Vec<f32>,(String,String))>>();
 
+
+    // Vec<(index: usize, (distance: f32,(chunk: String, link: String)))>
     let mut linked_text_embeddings = linked_text_embeddings.into_iter().map(|x| {
         let mut sum_distance = 0f32;
         for v in 0..prompt_embedding.len() {
@@ -241,9 +261,10 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         (average_distance,x.1)
     }).enumerate().collect::<Vec<(usize,(f32,(String,String)))>>();
 
-
+    // sort by distance to prompt embedding (text_triggers)
     linked_text_embeddings.sort_by(|a, b| a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal));
 
+    // select the first n chunks until max char_count reached
     let mut my_selection = Vec::new();
     let mut chars: usize = 0;
 
@@ -257,19 +278,26 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
         }
     }
 
+    // sort by index (restores the reading order)
     my_selection.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut result = String::new();
 
+    result.push_str(format!("<source href=\"{}\">",&my_selection[0].1.1.1).as_str());
+
     for i in 0..my_selection.len(){
         result.push_str(&my_selection[i].1.1.0);
+        // if there is a gap between indices then it's a new item
         if i + 1 < my_selection.len() && my_selection[i].0 + 1 != my_selection[i+1].0 {
-            result.push_str("<next_excerpt/>");
+            result.push_str("<next_item/>");
         }
+        // if the link changes next element is a new source
         if i + 1 < my_selection.len() && my_selection[i].1.1.1 != my_selection[i+1].1.1.1 {
-            result.push_str("<next_source/>");
+            result.push_str("<source/>");
+            result.push_str(format!("<source href=\"{}\">",&my_selection[i].1.1.1).as_str());
         }
     }
+    result.push_str("<source/>");
     Ok(result)
 }
 

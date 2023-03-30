@@ -473,17 +473,10 @@ impl ProposalData {
     <h3>{}</h3>
 
 <div class=\"dropdown\">
-  <button class=\"dropdown-btn\">Briefing topic: </button><span id=\"topic\"> 📋 Overview</span>
+  <button class=\"dropdown-btn\">Show: </button><span id=\"topic\"> 📋 Overview</span>
   <div class=\"dropdown-content\">
     <a href=\"#\" onclick=\"toggleMsg(this, 'summary')\">📋 Overview</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'problem')\">❓ Problem</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'risks')\">⚠ Risks or downsides</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'viability')\">🛠 Feasibility and viability</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'economic_impact')\">💸 Economic impact</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'legal')\">⚖ Legal compliance</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'sustainability')\">🌿 Sustainability</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'accountability')\">🔎 Transparency and accountability</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'community_support')\">👥 Community Support</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'briefing')\">📋 Briefing</a>
   </div>
 </div>
 
@@ -542,24 +535,10 @@ impl ProposalData {
             self.proposal_in_deposit_period.to_string(),
             format!("{{
               summary: {:?},
-              problem: {:?},
-              risks: {:?},
-              viability: {:?},
-              economic_impact: {:?},
-              legal: {:?},
-              sustainability: {:?},
-              accountability: {:?},
-              community_support: {:?},
+              briefing: {:?},
             }};",
             proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("problem").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("risks").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("viability").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("economic impact").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("legal").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("sustainability").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("accountability").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("community support").unwrap_or(&"".to_string())
+            proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()),
             ),
             r#"
             function toggleMsg(link, key) {

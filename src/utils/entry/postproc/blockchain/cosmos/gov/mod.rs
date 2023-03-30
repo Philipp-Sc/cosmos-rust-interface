@@ -84,6 +84,14 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         };
                         briefings.push(("summary".to_string(),content.to_string()));
                     }
+                    else if i == 1 {
+                        let content = if let Some(completion) = gpt3_result_briefing {
+                            format!("⚡ AI-Generated Briefing\n\n{}\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.",completion.trim())
+                        }else{
+                            "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".trim().to_string()
+                        };
+                        briefings.push(("briefing".to_string(),content.to_string()));
+                    }
                     else{
                         //briefings.push(("other".to_string(),format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim())));
                     }
