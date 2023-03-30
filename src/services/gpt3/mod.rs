@@ -17,6 +17,10 @@ use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
 
 const GPT3_PREFIX: &str = "GPT3";
 
+const GPT_4_8K_MODEL: &str ="gpt-4";
+const GPT_4_32K_MODEL: &str ="gpt-4-32k";
+const GPT_3_5_TURBO_MODEL: &str = "gpt-3.5-turbo";
+
 const SYSTEM_RETRIEVE_OPTION: &str = r#"You are the rust compiler:
 - response type: Option<&str>
 Note: your response might start with one of ["None","Some"] depending on the instruction.
@@ -130,7 +134,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash,&SYSTEM_SUMMARY, &prompt, 200u16);
+                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_SUMMARY, &prompt, 200u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
                                 if insert_result {
                                     info!("Inserted GPT-3 chat completion result for {}",&key_for_hash);
@@ -314,7 +318,7 @@ pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, desc
 
         let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
         let prompt = get_prompt_for_gpt3(description, PromptKind::LINK_TO_COMMUNITY);
-        if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_link_to_community, &SYSTEM_RETRIEVE_OPTION, &prompt, 100u16);
+        if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_link_to_community, &GPT_3_5_TURBO_MODEL, &SYSTEM_RETRIEVE_OPTION, &prompt, 100u16);
 
         if task_store.contains_key(&key_for_link_to_community) {
             match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
@@ -386,12 +390,12 @@ pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> 
     return false;
 }
 
-pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store: &TaskMemoryStore, key: &str, system: &str, prompt: &str, completion_token_limit: u16) -> bool {
+pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store: &TaskMemoryStore, key: &str, model_name: &str, system: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
     if !task_store.contains_key(&key) {
 
         info!("Requesting OpenAI GPT Chat Completion for key '{}'", key);
-        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", system.to_owned(), prompt.to_owned(), completion_token_limit);
+        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", model_name.to_owned(),system.to_owned(), prompt.to_owned(), completion_token_limit);
         debug!("Received response from OpenAI GPT: {:?}", result);
 
         let result: Maybe<ResponseResult> = Maybe {

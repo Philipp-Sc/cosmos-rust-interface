@@ -313,6 +313,7 @@ impl ProposalData {
                   max-height: 100px;
                   overflow: hidden;
                   width: 100%;
+                  font-size: x-small;
                 }
                 .show-more {
                   margin-top: 10px;
@@ -464,20 +465,12 @@ impl ProposalData {
           </style>
         </head>
 
-    <div id=\"fraud-alert\"></div>
        <div class=\"container\">
     <h3 class=\"title\" >{}</h3>
 
     <h2>{}</h2>
     <h2>#{} - {}</h2>
     <h3>{}</h3>
-
-    <div class=\"description\">
-      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
-      <div class=\"show-more\">
-        <button id=\"show-more-btn\">Show More</button>
-      </div>
-    </div>
 
 <div class=\"dropdown\">
   <button class=\"dropdown-btn\">Briefing topic: </button><span id=\"topic\"> 📋 Overview</span>
@@ -497,6 +490,13 @@ impl ProposalData {
 </br>
 
     <div id=\"summary\"></div>\
+    <div class=\"description\">
+      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
+      <div class=\"show-more\">
+        <button id=\"show-more-btn\">Show More</button>
+      </div>
+    </div>
+
 
     <div class=\"button-container\">
   <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
@@ -506,6 +506,7 @@ impl ProposalData {
   <div id=\"status-text\" style=\"display: none;\">{}</div>
 </div>
 
+    <div id=\"fraud-alert\"></div>
   </div>
   <script src=\"https://unpkg.com/showdown/dist/showdown.min.js\"></script>
   <script>
