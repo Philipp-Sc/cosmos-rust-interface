@@ -57,14 +57,14 @@ const PROMPTS: [&str;3] = [
                ];
 
 const QUESTIONS: [&str;8] = [
-    "Why is this proposal important? (in the style of a summary)",
-    "What are the potential risks or downsides? (in the style of a reasonable warning)",
-    "Is this proposal feasible and viable? (in the style of a correct technical assessment)",
-    "What is the economic impact? (in the style of a balanced economic analysis)",
-    "Is it legally compliant? (in the style of a fair legal review)",
-    "Is it sustainable? (in the style of an environmental assessment)",
-    "Is it transparent and accountable? (in the style of a truthful transparency report)",
-    "Is there community support? (in the style of a social feedback assessment)"
+    "Why is this proposal important? (in the style of a summary, title: ❓ Problem)",
+    "What are the potential risks or downsides? (in the style of a reasonable warning, title: ⚠ Risks)",
+    "Is this proposal feasible and viable? (in the style of a correct technical assessment, title: 🛠 Feasibility/viability)",
+    "What is the economic impact? (in the style of a balanced economic analysis, title: 💸 Economic impact)",
+    "Is it legally compliant? (in the style of a fair legal review, title: ⚖ Legal compliance)",
+    "Is it sustainable? (in the style of an environmental assessment, title: 🌿 Sustainability)",
+    "Is it transparent and accountable? (in the style of a truthful transparency report, title: 🔎 Transparency/accountability)",
+    "Is there community support? (in the style of a social feedback assessment, title: 👥 Community Support)"
 ];
 
 
