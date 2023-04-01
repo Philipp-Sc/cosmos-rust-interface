@@ -59,7 +59,7 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-                for each in proposals.into_iter().filter(|x| x.status == status) {
+                for each in proposals.into_iter().filter(|x| x.status == status && x.blockchain_name == blockchain.name) {
                     values.push(each);
                 }
             }
