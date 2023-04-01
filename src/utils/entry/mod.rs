@@ -10,6 +10,7 @@ use std::{
     error::Error as StdError,
     fmt::{self, Display},
 };
+use cosmos_rust_package::api::custom::query::gov::{ParamsExt, TallyResultExt};
 
 #[cfg(feature = "postproc")]
 pub mod postproc;
@@ -213,7 +214,10 @@ pub struct ProposalData {
     pub proposal_state: String,
     pub proposal_in_deposit_period: bool,
     pub fraud_risk: String,
-    pub proposal_tally_result: String,
+    pub proposal_tally_result: Option<TallyResultExt>,
+    pub proposal_tallying_param: Option<ParamsExt>,
+    pub proposal_voting_param: Option<ParamsExt>,
+    pub proposal_deposit_param: Option<ParamsExt>,
     pub proposal_status_icon: String,
 }
 
@@ -487,8 +491,15 @@ impl ProposalData {
 
     <div id=\"summary\"></div>\
 
-  <div id=\"status-text\" style=\"display: block;\">📊 {}</div>
-  <div id=\"status-text\" style=\"display: block;\">📊 {}</div>
+  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  </br>
+  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  </br>
+  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  </br>
+  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  </br>
+  <div id=\"status-text\" style=\"display: block;\">{}</div>
 
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
@@ -532,7 +543,22 @@ impl ProposalData {
             self.proposal_status_icon,
             self.proposal_title,
             self.proposal_state,
-            self.proposal_tally_result,
+            self.proposal_tally_result.as_ref().unwrap_or(&TallyResultExt{ tally: None}),
+            self.proposal_deposit_param.as_ref().unwrap_or(&ParamsExt{
+                voting_params_ext: None,
+                deposit_params_ext: None,
+                tally_params_ext: None,
+            }),
+            self.proposal_voting_param.as_ref().unwrap_or(&ParamsExt{
+                voting_params_ext: None,
+                deposit_params_ext: None,
+                tally_params_ext: None,
+            }),
+            self.proposal_tallying_param.as_ref().unwrap_or(&ParamsExt{
+                voting_params_ext: None,
+                deposit_params_ext: None,
+                tally_params_ext: None,
+            }),
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,
