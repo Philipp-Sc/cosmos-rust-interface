@@ -1,5 +1,5 @@
 use cosmos_rust_package::chrono::Utc;
-use cosmos_rust_package::api::custom::query::gov::{get_proposals, get_tally, ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::query::gov::{get_params, get_proposals, get_tally, ProposalExt, ProposalStatus};
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::Maybe;
@@ -7,10 +7,17 @@ use crate::utils::response::{BlockchainQuery, ResponseResult, TaskResult};
 
 
 const TALLY_RESULT_PREFIX: &str = "TALLY_RESULT";
+const PARAMS_PREFIX: &str = "PARAMS";
 
 pub fn get_key_for_tally_result(hash: u64) -> String {
     format!("{}_{}",TALLY_RESULT_PREFIX,hash)
 }
+
+pub fn get_key_for_params(blockchain_name: String, params_type: String) -> String {
+    format!("{}_{}_{}",PARAMS_PREFIX,blockchain_name,params_type)
+}
+
+
 
 // TODO: WARNING: if the page count were to decrease for some reason, database will have orphan entries!
 pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalStatus,task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
@@ -85,4 +92,18 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
     }
 
     Ok(TaskResult{ list_of_keys_modified: keys })
+}
+
+pub async fn fetch_params(blockchain: SupportedBlockchain, params_type: String, task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
+
+    let params = get_params(blockchain.clone(),params_type.clone()).await?;
+
+    let result: Maybe<ResponseResult> = Maybe {
+        data: Ok(ResponseResult::Blockchain(BlockchainQuery::Params(params))),
+        timestamp: Utc::now().timestamp(),
+    };
+    let key1 = get_key_for_params(blockchain.name,params_type);
+    task_store.push(&key1, result)?;
+
+    Ok(TaskResult{ list_of_keys_modified: vec![key1] })
 }

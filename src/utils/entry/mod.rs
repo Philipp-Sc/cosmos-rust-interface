@@ -487,11 +487,8 @@ impl ProposalData {
 
     <div id=\"summary\"></div>\
 
-    <div class=\"button-container\">
-  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
-  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Show Votes</button>
-    </div>
-  <div id=\"status-text\" style=\"display: none;\">{}</div>
+  <div id=\"status-text\" style=\"display: block;\">📊 {}</div>
+  <div id=\"status-text\" style=\"display: block;\">📊 {}</div>
 
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
@@ -535,6 +532,7 @@ impl ProposalData {
             self.proposal_status_icon,
             self.proposal_title,
             self.proposal_state,
+            self.proposal_tally_result,
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,
@@ -542,11 +540,9 @@ impl ProposalData {
             format!("{{
               summary: {:?},
               briefing: {:?},
-              tally: {:?},
             }};",
             proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()),
             proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()),
-                self.proposal_tally_result,
             ),
             r#"
             function toggleMsg(link, key) {
