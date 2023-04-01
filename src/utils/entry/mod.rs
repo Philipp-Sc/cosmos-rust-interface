@@ -393,10 +393,6 @@ impl ProposalData {
                   border: 1px solid #D8DEE9;
                 }
 
-                #status-text:empty {
-                    display: none;
-                }
-
                 .dropdown {
                   position: relative;
                   display: inline-block;
@@ -496,15 +492,15 @@ impl ProposalData {
     <div id=\"summary\"></div>\
 
   </br>
-  <div id=\"status-text\" style=\"display: block;\">💰 {}</div>
+  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
   </br>
   <div id=\"status-text\" style=\"display: block;\">{}</div>
   </br>
-  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
+  {}
   </br>
-  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
+  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
   </br>
-  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
+  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
 
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
@@ -554,7 +550,7 @@ impl ProposalData {
                 tally_params_ext: None,
             }),
             self.proposal_state,
-            self.proposal_tally_result.as_ref().unwrap_or(&TallyResultExt{ tally: None}),
+            if let Some(tally_result) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;\">{}</div>",tally_result)}else{"".to_string()},
             self.proposal_voting_param.as_ref().unwrap_or(&ParamsExt{
                 voting_params_ext: None,
                 deposit_params_ext: None,
@@ -574,8 +570,8 @@ impl ProposalData {
               summary: {:?},
               briefing: {:?},
             }};",
-            proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()),
-            proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()),
+            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()).to_owned()},
+            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()).to_owned()},
             ),
             r#"
             function toggleMsg(link, key) {

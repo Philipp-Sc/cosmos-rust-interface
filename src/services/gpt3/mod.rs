@@ -14,6 +14,7 @@ use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, lin
 use nnsplit::NNSplitOptions;
 use nnsplit::tract_backend::NNSplit;
 use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult::EmbeddingResult;
+use crate::blockchain::cosmos::gov::get_key_for_tally_result;
 
 const GPT3_PREFIX: &str = "GPT3";
 
@@ -399,6 +400,17 @@ pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, desc
 }
 
 pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> bool {
+
+    match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
+        Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
+            if let Some(spam_likelihood) = tally_result.spam_likelihood() {
+                if spam_likelihood >=0.5 {
+                    return false;
+                }
+            }
+        }
+        _ => {}
+    };
 
     let fraud_detection_key_for_hash = get_key_for_fraud_detection(hash);
 
