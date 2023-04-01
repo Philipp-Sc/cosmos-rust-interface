@@ -393,6 +393,10 @@ impl ProposalData {
                   border: 1px solid #D8DEE9;
                 }
 
+                #status-text:empty {
+                    display: none;
+                }
+
                 .dropdown {
                   position: relative;
                   display: inline-block;
@@ -491,15 +495,16 @@ impl ProposalData {
 
     <div id=\"summary\"></div>\
 
-  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  </br>
+  <div id=\"status-text\" style=\"display: block;\">💰 {}</div>
   </br>
   <div id=\"status-text\" style=\"display: block;\">{}</div>
   </br>
-  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
   </br>
-  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
   </br>
-  <div id=\"status-text\" style=\"display: block;\">{}</div>
+  <div id=\"status-text\" style=\"display: block;\">🗳 {}</div>
 
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
@@ -525,6 +530,7 @@ impl ProposalData {
   markdownText.innerHTML = htmlText;
 
     const fraudRisk = {};
+    const strongVeto = {};
     const depositPeriod = {};
     const proposal_data = {};
     {}
@@ -542,13 +548,13 @@ impl ProposalData {
             self.proposal_id.unwrap_or(0),
             self.proposal_status_icon,
             self.proposal_title,
-            self.proposal_state,
-            self.proposal_tally_result.as_ref().unwrap_or(&TallyResultExt{ tally: None}),
             self.proposal_deposit_param.as_ref().unwrap_or(&ParamsExt{
                 voting_params_ext: None,
                 deposit_params_ext: None,
                 tally_params_ext: None,
             }),
+            self.proposal_state,
+            self.proposal_tally_result.as_ref().unwrap_or(&TallyResultExt{ tally: None}),
             self.proposal_voting_param.as_ref().unwrap_or(&ParamsExt{
                 voting_params_ext: None,
                 deposit_params_ext: None,
@@ -562,6 +568,7 @@ impl ProposalData {
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,
+            self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0).to_string(),
             self.proposal_in_deposit_period.to_string(),
             format!("{{
               summary: {:?},
@@ -597,18 +604,25 @@ impl ProposalData {
             if (fraudRisk > 0.7) {
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
-                alertDiv.innerText = '🚨 ALERT: High fraud risk. Be careful, avoid suspicious links/URLs, and remember, if it seems too good to be true, it probably is. 🚨';
+                alertDiv.innerText = '🚨 ALERT: High fraud risk. Remember, if it seems too good to be true, it probably is. 🚨';
                 document.getElementById('fraud-alert').appendChild(alertDiv);
-            } else if (fraudRisk > 0.4) {
+            }
+            else if (strongVeto >= 0.5) {
+                const alertDiv = document.createElement('div');
+                alertDiv.classList.add('alert');
+                alertDiv.innerText = '🚨 ALERT: High fraud risk. High percentage of NoWithVeto votes! 🚨';
+                document.getElementById('fraud-alert').appendChild(alertDiv);
+            }
+            else if (fraudRisk > 0.4) {
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
-                warningDiv.innerText = '⚠ WARNING: Verify URLs and proposal before interacting. Stay safe! ⚠';
+                warningDiv.innerText = '⚠ WARNING: Moderate fraud risk. Stay safe! ⚠';
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
             else if (depositPeriod) {
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
-                warningDiv.innerText = '⚠ CAUTION: Higher fraud risk during deposit period. Verify URLs and proposals before interacting. Stay safe! ⚠';
+                warningDiv.innerText = '⚠ CAUTION: Fraud risk during deposit period. ⚠';
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
   const showMoreBtn = document.getElementById('show-more-btn');
