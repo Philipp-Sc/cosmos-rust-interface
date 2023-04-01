@@ -23,7 +23,7 @@ mod test {
     use anyhow::anyhow;
     use cosmos_rust_package::api::core::cosmos::channels;
 
-    #[tokio::test]
+    #[cosmos_rust_package::tokio::test]
     pub async fn account_from_seed_phrase() -> anyhow::Result<()> {
         let blockchain = channels::get_supported_blockchains_from_chain_registry("./packages/chain-registry".to_string(),true,None).await.get("terra2").unwrap().clone();
         let res = super::account_from_seed_phrase("notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius".to_string(),blockchain.clone())?;

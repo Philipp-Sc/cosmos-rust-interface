@@ -1,4 +1,4 @@
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::Maybe;

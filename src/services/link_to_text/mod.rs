@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::ptr::hash;
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
 use cosmos_rust_package::api::custom::query::gov::{LINK_FINDER, ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};

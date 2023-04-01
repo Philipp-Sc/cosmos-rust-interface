@@ -9,9 +9,9 @@ use serde_json::Value;
 use serde_json::json;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 
-pub fn duration_to_string(duration: chrono::Duration) -> String {
+pub fn duration_to_string(duration: cosmos_rust_package::chrono::Duration) -> String {
     let days = ((duration.num_seconds() / 60) / 60) / 24;
     let hours = ((duration.num_seconds() / 60) / 60) % 24;
     let minutes = (duration.num_seconds() / 60) % 60;
@@ -98,14 +98,14 @@ pub fn estimate_optimal_next_claim_and_stake_tx(loan_amount: Decimal, pending_re
         .checked_div(token_dist_returns_per_timeframe_in_ust);
 
 
-    let wait_loan_taken = chrono::Duration::seconds(_optimal_time_to_wait.unwrap().to_i64().unwrap());
+    let wait_loan_taken = cosmos_rust_package::chrono::Duration::seconds(_optimal_time_to_wait.unwrap().to_i64().unwrap());
 
     let mut time = _optimal_time_to_wait.unwrap().to_i64().unwrap();
     if let Some(ttwap) = time_to_wait_already_passed {
         time = time-(ttwap.to_i64().unwrap());
     }
 
-    let minus_already_wait_loan_taken = chrono::Duration::seconds(time);
+    let minus_already_wait_loan_taken = cosmos_rust_package::chrono::Duration::seconds(time);
 
     let duration = duration_to_string(wait_loan_taken);
     let dt = Utc::now();

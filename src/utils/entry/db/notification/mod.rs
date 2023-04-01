@@ -1,5 +1,5 @@
 use crate::utils::entry::*;
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 use std::collections::HashMap;
 use std::iter::FilterMap;
 

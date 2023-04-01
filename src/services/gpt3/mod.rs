@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
@@ -134,7 +134,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
                 for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
-                    let hash = each.id_title_and_description_to_hash();
+                    let hash = each.to_hash();
 
                     if fraud_detection_result_is_ok(&task_store,hash) {
                         let (title, description) = each.get_title_and_description();

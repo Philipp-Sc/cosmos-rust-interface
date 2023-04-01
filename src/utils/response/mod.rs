@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use cosmos_rust_package::api::custom::query::gov::ProposalExt;
+use cosmos_rust_package::api::custom::query::gov::{ProposalExt, TallyResultExt};
 use enum_as_inner::EnumAsInner;
-use serde::{Deserialize,Serialize};
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult;
-
+use serde::{Serialize,Deserialize};
 
 #[derive(Serialize,Deserialize,Debug, Clone, EnumAsInner)]
 pub enum ResponseResult {
@@ -134,6 +133,7 @@ pub struct FraudClassification {
 pub enum BlockchainQuery {
     //NextKey(Option<Vec<u8>>),
     GovProposals(Vec<ProposalExt>),
+    TallyResult(TallyResultExt),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumAsInner)]

@@ -1,5 +1,4 @@
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Serialize,Deserialize};
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
@@ -214,6 +213,7 @@ pub struct ProposalData {
     pub proposal_state: String,
     pub proposal_in_deposit_period: bool,
     pub fraud_risk: String,
+    pub proposal_tally_result: String,
     pub proposal_status_icon: String,
 }
 
@@ -473,16 +473,26 @@ impl ProposalData {
     <h3>{}</h3>
 
 <div class=\"dropdown\">
-  <button class=\"dropdown-btn\">Show: </button><span id=\"topic\"> 📋 Overview</span>
+  <button class=\"dropdown-btn\">Showing</button><span id=\"topic\"> 📋 Overview</span>
   <div class=\"dropdown-content\">
     <a href=\"#\" onclick=\"toggleMsg(this, 'summary')\">📋 Overview</a>
     <a href=\"#\" onclick=\"toggleMsg(this, 'briefing')\">📋 Briefing</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'tally')\">📋 Sentiment</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'none')\">📋 Similar Proposals</a>
+    <a href=\"#\" onclick=\"toggleMsg(this, 'none')\">📋 Trends</a>
   </div>
 </div>
 
 </br>
 
     <div id=\"summary\"></div>\
+
+    <div class=\"button-container\">
+  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
+  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Show Votes</button>
+    </div>
+  <div id=\"status-text\" style=\"display: none;\">{}</div>
+
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
       <div class=\"show-more\">
@@ -492,12 +502,8 @@ impl ProposalData {
 
 
     <div class=\"button-container\">
-  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Status</button>
-  <button id=\"status-btn\" onclick=\"toggleStatus()\">📊 Show Votes</button>
   <button id=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
-
-  <div id=\"status-text\" style=\"display: none;\">{}</div>
-</div>
+   </div>
 
     <div id=\"fraud-alert\"></div>
   </div>
@@ -528,17 +534,19 @@ impl ProposalData {
             self.proposal_id.unwrap_or(0),
             self.proposal_status_icon,
             self.proposal_title,
+            self.proposal_state,
             self.proposal_description,
             self.proposal_link,
-            self.proposal_state,
             self.fraud_risk,
             self.proposal_in_deposit_period.to_string(),
             format!("{{
               summary: {:?},
               briefing: {:?},
+              tally: {:?},
             }};",
             proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()),
             proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()),
+                self.proposal_tally_result,
             ),
             r#"
             function toggleMsg(link, key) {

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use chrono::Utc;
+use cosmos_rust_package::chrono::Utc;
 use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::*;
 use strum::IntoEnumIterator;
@@ -9,6 +9,7 @@ use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassificatio
 
 use serde::{Deserialize,Serialize};
 use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTResult, OpenAIGPTChatCompletionResult};
+use crate::blockchain::cosmos::gov::get_key_for_tally_result;
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::gpt3::get_key_for_gpt3;
 
@@ -38,6 +39,10 @@ pub fn governance_proposal_notifications(task_store: &TaskMemoryStore) -> Vec<Co
 /// # Adds proposals
 ///
 /// This function will add proposals from all the blockchains.
+/// Augmented with:
+/// - Fraud Detection
+/// - GPT3 Briefing
+/// - Tally Result
 ///
 fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStore) {
 
@@ -56,7 +61,15 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 let proposal_hash = proposal.to_hash();
 
-                let hash = proposal.id_title_and_description_to_hash();
+                let hash = proposal.to_hash();
+
+                let tally_result = match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
+                    Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
+                        Some(tally_result)
+                    }
+                    Err(_) => {None}
+                    _ => {None}
+                };
 
                 let fraud_classification = match task_store.get::<ResponseResult>(&get_key_for_fraud_detection(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification{title, description, fraud_prediction })), timestamp }) => {
@@ -118,6 +131,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                         proposal_description: proposal.get_title_and_description().1,
                         proposal_vetoed: proposal.proposal().map(|x| x.final_tally_result.map(|y| y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.yes.parse::<f64>().unwrap_or(0f64) && y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.no.parse::<f64>().unwrap_or(0f64))).flatten().unwrap_or(false),
                         proposal_in_deposit_period: proposal.status == ProposalStatus::StatusDepositPeriod,
+                        proposal_tally_result: format!("{:?}",tally_result),
                         fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
                         proposal_status_icon: proposal.status.to_icon(),
 
