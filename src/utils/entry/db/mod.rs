@@ -36,11 +36,11 @@ const CRB_REGISTRATION_STORE_JSON: &str = "./tmp/cosmos_rust_bot_registrations.j
 
 pub fn load_sled_db(path: &str) -> sled::Db {
     let db: sled::Db = sled::Config::default()
-        .path(path.to_owned())
-        .cache_capacity(1024 * 1024 * 1024 / 2)
-        .use_compression(true)
-        .compression_factor(22)
-        .flush_every_ms(Some(1000))
+        .path(path)
+        .cache_capacity( 1024 * 1024 * 1024) // 1gb
+        //.use_compression(true)
+        //.compression_factor(22)
+        .flush_every_ms(Some(100))
         .open()
         .unwrap();
     db
@@ -884,13 +884,7 @@ pub struct SledStore {
 
 impl SledStore {
     pub fn open(path: impl Into<PathBuf>) -> anyhow::Result<Self> {
-        let db: sled::Db = sled::Config::default()
-            .path(path.into())
-            .cache_capacity(1024 * 1024 * 1024 / 2)
-            .use_compression(true)
-            .compression_factor(22)
-            .flush_every_ms(Some(1000))
-            .open()?;
+        let db: sled::Db = load_sled_db(path);
         Ok(SledStore::new(db))
     }
     pub fn new(sled_db: sled::Db) -> Self {
