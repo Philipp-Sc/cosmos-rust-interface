@@ -883,7 +883,7 @@ pub struct SledStore {
 }
 
 impl SledStore {
-    pub fn open(path: impl Into<PathBuf>) -> anyhow::Result<Self> {
+    pub fn open(path: &str) -> anyhow::Result<Self> {
         let db: sled::Db = load_sled_db(path);
         Ok(SledStore::new(db))
     }
