@@ -1,9 +1,13 @@
 use std::collections::HashMap;
-use cosmos_rust_package::api::custom::query::gov::{ParamsExt, ProposalExt, TallyResultExt};
 use enum_as_inner::EnumAsInner;
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
 use rust_openai_gpt_tools_socket_ipc::ipc::OpenAIGPTResult;
 use serde::{Serialize,Deserialize};
+
+use cosmos_rust_package::api::custom::types::gov::tally_ext::{TallyResultExt};
+use cosmos_rust_package::api::custom::types::gov::params_ext::{ParamsExt};
+use cosmos_rust_package::api::custom::types::staking::pool_ext::{PoolExt};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::ProposalExt;
 
 #[derive(Serialize,Deserialize,Debug, Clone, EnumAsInner)]
 pub enum ResponseResult {
@@ -135,6 +139,7 @@ pub enum BlockchainQuery {
     GovProposals(Vec<ProposalExt>),
     TallyResult(TallyResultExt),
     Params(ParamsExt),
+    Pool(PoolExt),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumAsInner)]

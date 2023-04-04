@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
-use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
@@ -138,7 +138,9 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                     let hash = each.to_hash();
 
                     if fraud_detection_result_is_ok(&task_store,hash) {
-                        let (title, description) = each.get_title_and_description();
+
+                        let title = each.get_title();
+                        let description = each.get_description();
                         let text = format!("{}/n{}", title, description);
 
                         match retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {

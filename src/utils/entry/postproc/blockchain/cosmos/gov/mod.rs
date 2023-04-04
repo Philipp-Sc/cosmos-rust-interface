@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use cosmos_rust_package::chrono::Utc;
-use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
 use crate::utils::entry::*;
 use strum::IntoEnumIterator;
-use cosmos_rust_package::api::custom::query::gov::ProposalTime;
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, ProposalDataResult};
 
 use serde::{Deserialize,Serialize};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus, ProposalTime};
 use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTResult, OpenAIGPTChatCompletionResult};
 use crate::blockchain::cosmos::gov::{get_key_for_params, get_key_for_tally_result};
+use crate::blockchain::cosmos::staking::get_key_for_pool;
 use crate::services::fraud_detection::get_key_for_fraud_detection;
 use crate::services::gpt3::get_key_for_gpt3;
 
@@ -66,6 +66,14 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                 let tally_result = match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
                         Some(tally_result)
+                    }
+                    Err(_) => {None}
+                    _ => {None}
+                };
+
+                let pool = match task_store.get::<ResponseResult>(&get_key_for_pool(&proposal.blockchain_name),&RetrievalMethod::GetOk){
+                    Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::Pool(pool))), timestamp }) => {
+                        Some(pool)
                     }
                     Err(_) => {None}
                     _ => {None}
@@ -133,30 +141,28 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                 }
 
                 let data =  ProposalData {
-                        proposal_api: format!("https://libreai.de/cosmos-governance-proposals/{}/{}.html",proposal.blockchain_name.to_string().to_lowercase(),proposal.proposal().map(|x| x.proposal_id.to_string()).unwrap_or("??".to_string())),
+                        proposal_api: format!("https://libreai.de/cosmos-governance-proposals/{}/{}.html",proposal.blockchain_name.to_string().to_lowercase(),proposal.get_proposal_id()),
                         proposal_link: proposal.governance_proposal_link(),
-                        proposal_clickbait: proposal.proposal_clickbait(fraud_classification),
                         proposal_gpt_completions: briefings,
-                        proposal_content: proposal.proposal_content(),
                         proposal_state: proposal.proposal_state(),
-                        proposal_details: proposal.proposal_details(fraud_classification),
                         proposal_blockchain: proposal.blockchain_name.to_string(),
                         proposal_status: proposal.status.to_string(),
-                        proposal_id: proposal.proposal().map(|x| x.proposal_id),
-                        proposal_type: proposal.content().map(|x| x.to_string()),
+                        proposal_id: proposal.get_proposal_id(),
+                        proposal_type: proposal.content_opt().map(|x| x.to_string()),
                         proposal_SubmitTime: proposal.time(&ProposalTime::SubmitTime).map(|t| t.seconds),
                         proposal_DepositEndTime: proposal.time(&ProposalTime::DepositEndTime).map(|t| t.seconds),
                         proposal_VotingStartTime: proposal.time(&ProposalTime::VotingStartTime).map(|t| t.seconds),
                         proposal_VotingEndTime: proposal.time(&ProposalTime::VotingEndTime).map(|t| t.seconds),
                         proposal_LatestTime: proposal.time(&ProposalTime::LatestTime).map(|t| t.seconds),
-                        proposal_title: proposal.get_title_and_description().0,
-                        proposal_description: proposal.get_title_and_description().1,
-                        proposal_vetoed: proposal.proposal().map(|x| x.final_tally_result.map(|y| y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.yes.parse::<f64>().unwrap_or(0f64) && y.no_with_veto.parse::<f64>().unwrap_or(0f64) > y.no.parse::<f64>().unwrap_or(0f64))).flatten().unwrap_or(false),
+                        proposal_title: proposal.get_title(),
+                        proposal_description: proposal.get_description(),
+                        proposal_vetoed: proposal.final_tally_with_no_with_veto_majority(),
                         proposal_in_deposit_period: proposal.status == ProposalStatus::StatusDepositPeriod,
                         proposal_tally_result: tally_result,
                         proposal_tallying_param: tallying_param,
                         proposal_deposit_param: deposit_param,
                         proposal_voting_param: voting_param,
+                        proposal_blockchain_pool: pool,
                         fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
                         proposal_status_icon: proposal.status.to_icon(),
 

@@ -2,7 +2,7 @@ pub mod notification;
 pub mod query;
 pub mod socket;
 
-use sled::IVec;
+use sled::{IVec, Mode};
 use std::path::PathBuf;
 
 use log::{debug, error, info, trace};
@@ -40,7 +40,8 @@ pub fn load_sled_db(path: &str) -> sled::Db {
         .cache_capacity( 1024 * 1024 * 1024) // 1gb
         //.use_compression(true)
         //.compression_factor(22)
-        .flush_every_ms(Some(100))
+        .flush_every_ms(Some(300))
+        .mode(Mode::HighThroughput)
         .open()
         .unwrap();
     db
@@ -88,8 +89,12 @@ impl Clone for TaskMemoryStore {
 }
 
 impl TaskMemoryStore {
-    pub fn new() -> anyhow::Result<Self> {
-        let sled_store = SledStore::temporary()?;
+    pub fn new(path: Option<String>) -> anyhow::Result<Self> {
+        let sled_store = if let Some(p) = path {
+            SledStore::open(&p)?
+        }else {
+            SledStore::temporary()?
+        };
         Ok(TaskMemoryStore(sled_store))
     }
 
@@ -544,23 +549,19 @@ impl CosmosRustBotStore {
 
                         if let Entry::Value(Value { timestamp: _, origin: _, custom_data: CustomData::ProposalData(proposal_data), imperative: _ }) = entry.clone() {
                             // filesystem sync of generated files for proposal data
-                            if let Some(proposal_id) = proposal_data.proposal_id {
-                                // write governance proposal as HTML page
-                                let file_path = format!("./tmp/governance_proposals/{}/{}.html", proposal_data.proposal_blockchain.to_lowercase(), proposal_id);
-                                match std::fs::write(&file_path, proposal_data.generate_html()) {
-                                    Ok(_) => {},
-                                    Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
-                                };
-                                // write the fraud prediction to a JSON
-                                let file_path = format!("./tmp/fraud_detection/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_id);
-                                let json_string = json!({"title": proposal_data.proposal_title, "description": proposal_data.proposal_description, "fraud_prediction": proposal_data.fraud_risk}).to_string();
-                                match std::fs::write(&file_path, json_string) {
-                                    Ok(_) => {},
-                                    Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
-                                };
-                            }else{
-                                error!("Something went wrong: proposal_id undefined! {:?}", proposal_data);
-                            }
+                            // write governance proposal as HTML page
+                            let file_path = format!("./tmp/governance_proposals/{}/{}.html", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            match std::fs::write(&file_path, proposal_data.generate_html()) {
+                                Ok(_) => {},
+                                Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
+                            };
+                            // write the fraud prediction to a JSON
+                            let file_path = format!("./tmp/fraud_detection/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            let json_string = json!({"title": proposal_data.proposal_title, "description": proposal_data.proposal_description, "fraud_prediction": proposal_data.fraud_risk}).to_string();
+                            match std::fs::write(&file_path, json_string) {
+                                Ok(_) => {},
+                                Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
+                            };
                         }
                     }
                 },
@@ -896,7 +897,7 @@ impl SledStore {
 
     pub fn temporary() -> anyhow::Result<Self> {
         Ok(Self {
-            db: sled::Config::new().temporary(true).open()?,
+            db: sled::Config::new().temporary(true).cache_capacity(1024 * 1024 * 1024 * 2 /*2GB*/).open()?,
             subscriber: None,
         })
     }

@@ -4,7 +4,8 @@ use std::hash::{Hash, Hasher};
 use std::ptr::hash;
 use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
-use cosmos_rust_package::api::custom::query::gov::{LINK_FINDER, ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::query::gov::{LINK_FINDER};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, LinkToTextResult, LinkToTextResultStatus, TaskResult};
@@ -55,7 +56,8 @@ pub async fn link_to_text(task_store: TaskMemoryStore, key: String) -> anyhow::R
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
                 for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
-                    let (_, description) = each.get_title_and_description();
+
+                    let description = each.get_description();
 
                     let links = extract_links(&description);
 

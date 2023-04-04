@@ -1,6 +1,6 @@
 use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
-use cosmos_rust_package::api::custom::query::gov::{ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, FraudClassification, FraudClassificationStatus, TaskResult};
@@ -36,7 +36,9 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
                 for each in proposals.iter_mut().filter(|x| x.status!=ProposalStatus::StatusDepositPeriod && x.status!=ProposalStatus::StatusVotingPeriod) {
 
 
-                    let (title, description) = each.get_title_and_description();
+                    let title = each.get_title();
+                    let description = each.get_description();
+
                     let text =  format!("{}\n\n{}",title,description);
                     let spam_likelihood = each.spam_likelihood();
 
@@ -55,13 +57,16 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
 
                     if !task_store.contains_key(&key_for_hash){ // TODO: need to check if OK or ERROR
 
-                        let text =  each.proposal_details(None);
+
+                        let title = each.get_title();
+                        let description = each.get_description();
+                        let text =  format!("{}\n\n{}",&title,&description);
 
                         info!("client_send_rust_bert_fraud_detection_request");
                         let result: anyhow::Result<RustBertFraudDetectionResult> = client_send_rust_bert_fraud_detection_request("./tmp/rust_bert_fraud_detection_socket",vec![text.clone()]);
                         info!("RustBertFraudDetectionResult: {:?}",result);
 
-                        let (title, description) = each.get_title_and_description();
+
                         let result: Maybe<ResponseResult> = Maybe {
                             data: match result {
                                 Ok(data) => {

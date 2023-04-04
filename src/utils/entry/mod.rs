@@ -10,7 +10,9 @@ use std::{
     error::Error as StdError,
     fmt::{self, Display},
 };
-use cosmos_rust_package::api::custom::query::gov::{ParamsExt, TallyResultExt};
+use cosmos_rust_package::api::custom::types::gov::tally_ext::{TallyResultExt};
+use cosmos_rust_package::api::custom::types::gov::params_ext::{ParamsExt};
+use cosmos_rust_package::api::custom::types::staking::pool_ext::PoolExt;
 
 #[cfg(feature = "postproc")]
 pub mod postproc;
@@ -96,7 +98,7 @@ impl CustomData {
     fn default_display(&self) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_clickbait.to_owned()
+                o.proposal_description.to_owned()
             },
             CustomData::MetaData(o) => {
                 o.summary.to_owned()
@@ -136,7 +138,7 @@ impl CustomData {
     fn content_display(&self) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_content.to_owned()
+                o.proposal_description.to_owned()
             },
             _ => {
                 "Error: Can not display content for self.".to_string()
@@ -163,7 +165,7 @@ impl CustomData {
     fn command(&self, display: &str) -> Option<String> {
         match &self {
             CustomData::ProposalData(o) => {
-                Some(format!("gov prpsl {} {} id{}",display,o.proposal_blockchain,o.proposal_id.map(|x| x.to_string()).unwrap_or("?".to_string())))
+                Some(format!("gov prpsl {} {} id{}",display,o.proposal_blockchain,o.proposal_id))
             },
             _ => {
                 None
@@ -195,11 +197,9 @@ trait GetField {
 pub struct ProposalData {
     pub proposal_api: String,
     pub proposal_link: String,
-    pub proposal_clickbait: String,
-    pub proposal_details: String,
     pub proposal_blockchain: String,
     pub proposal_status: String,
-    pub proposal_id: Option<u64>,
+    pub proposal_id: u64,
     pub proposal_type: Option<String>,
     pub proposal_SubmitTime: Option<i64>,
     pub proposal_DepositEndTime: Option<i64>,
@@ -210,7 +210,6 @@ pub struct ProposalData {
     pub proposal_description: String,
     pub proposal_vetoed: bool,
     pub proposal_gpt_completions: Vec<(String,String)>,
-    pub proposal_content: String,
     pub proposal_state: String,
     pub proposal_in_deposit_period: bool,
     pub fraud_risk: String,
@@ -218,6 +217,7 @@ pub struct ProposalData {
     pub proposal_tallying_param: Option<ParamsExt>,
     pub proposal_voting_param: Option<ParamsExt>,
     pub proposal_deposit_param: Option<ParamsExt>,
+    pub proposal_blockchain_pool: Option<PoolExt>,
     pub proposal_status_icon: String,
 }
 
@@ -532,35 +532,23 @@ impl ProposalData {
     {}
 </script>
 <footer>
-  This website was created by <a href=\"\"> CosmosRustBot</a>. All rights reserved.
+  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>. Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>
 </footer>
 
   </body>
         </html>",
-            self.proposal_id.unwrap_or(0),
+            self.proposal_id,
             css_style,
             self.proposal_blockchain,
             self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string()),
-            self.proposal_id.unwrap_or(0),
+            self.proposal_id,
             self.proposal_status_icon,
             self.proposal_title,
-            self.proposal_deposit_param.as_ref().unwrap_or(&ParamsExt{
-                voting_params_ext: None,
-                deposit_params_ext: None,
-                tally_params_ext: None,
-            }),
+            self.proposal_deposit_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
             self.proposal_state,
             if let Some(tally_result) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;\">{}</div>",tally_result)}else{"".to_string()},
-            self.proposal_voting_param.as_ref().unwrap_or(&ParamsExt{
-                voting_params_ext: None,
-                deposit_params_ext: None,
-                tally_params_ext: None,
-            }),
-            self.proposal_tallying_param.as_ref().unwrap_or(&ParamsExt{
-                voting_params_ext: None,
-                deposit_params_ext: None,
-                tally_params_ext: None,
-            }),
+            self.proposal_voting_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
+            self.proposal_tallying_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,

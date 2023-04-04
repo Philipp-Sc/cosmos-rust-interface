@@ -1,6 +1,7 @@
 use cosmos_rust_package::chrono::Utc;
-use cosmos_rust_package::api::custom::query::gov::{get_params, get_proposals, get_tally, ProposalExt, ProposalStatus};
+use cosmos_rust_package::api::custom::query::gov::{get_params, get_proposals, get_tally};
 use cosmos_rust_package::api::core::cosmos::channels::SupportedBlockchain;
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus};
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::Maybe;
 use crate::utils::response::{BlockchainQuery, ResponseResult, TaskResult};
@@ -16,7 +17,6 @@ pub fn get_key_for_tally_result(hash: u64) -> String {
 pub fn get_key_for_params(blockchain_name: String, params_type: String) -> String {
     format!("{}_{}_{}",PARAMS_PREFIX,blockchain_name,params_type)
 }
-
 
 
 // TODO: WARNING: if the page count were to decrease for some reason, database will have orphan entries!
@@ -74,21 +74,18 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
         }
     }
     for mut each in values {
-        if let Some(id) = each
-            .proposal()
-            .map(|x| x.proposal_id) {
-            let tally = get_tally(blockchain.clone(), id).await?;
+        let id = each.get_proposal_id();
+        let tally = get_tally(blockchain.clone(), id).await?;
 
-            let key1 = get_key_for_tally_result(each.to_hash());
+        let key1 = get_key_for_tally_result(each.to_hash());
 
 
-            let result: Maybe<ResponseResult> = Maybe {
-                data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally))),
-                timestamp: Utc::now().timestamp(),
-            };
-            task_store.push(&key1, result)?;
-            keys.push(key1);
-        }
+        let result: Maybe<ResponseResult> = Maybe {
+            data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally))),
+            timestamp: Utc::now().timestamp(),
+        };
+        task_store.push(&key1, result)?;
+        keys.push(key1);
     }
 
     Ok(TaskResult{ list_of_keys_modified: keys })
