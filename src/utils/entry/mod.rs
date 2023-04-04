@@ -98,7 +98,7 @@ impl CustomData {
     fn default_display(&self) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_description.to_owned()
+                o.proposal_preview_msg.to_owned()
             },
             CustomData::MetaData(o) => {
                 o.summary.to_owned()
@@ -138,7 +138,7 @@ impl CustomData {
     fn content_display(&self) -> String {
         match &self {
             CustomData::ProposalData(o) => {
-                o.proposal_description.to_owned()
+                o.proposal_preview_msg.to_owned()
             },
             _ => {
                 "Error: Can not display content for self.".to_string()
@@ -219,6 +219,7 @@ pub struct ProposalData {
     pub proposal_deposit_param: Option<ParamsExt>,
     pub proposal_blockchain_pool: Option<PoolExt>,
     pub proposal_status_icon: String,
+    pub proposal_preview_msg: String,
 }
 
 impl ProposalData {
