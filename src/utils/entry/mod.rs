@@ -223,6 +223,7 @@ pub struct ProposalData {
     pub proposal_blockchain_pool: Option<PoolExt>,
     pub proposal_status_icon: String,
     pub proposal_preview_msg: String,
+    pub proposal_spam_likelihood: String,
 }
 
 impl ProposalData {
@@ -259,13 +260,14 @@ impl ProposalData {
             proposal_description: proposal.get_description(),
             proposal_vetoed: proposal.final_tally_with_no_with_veto_majority(),
             proposal_in_deposit_period: proposal.is_in_deposit_period(),
-            proposal_tally_result: tally_result,
+            proposal_tally_result: tally_result.clone(),
             proposal_tallying_param: tallying_param,
             proposal_deposit_param: deposit_param,
             proposal_voting_param: voting_param,
             proposal_blockchain_pool: blockchain_pool,
             fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
             proposal_status_icon: proposal.status.to_icon(),
+            proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string()
         }
 
     }
@@ -438,53 +440,10 @@ impl ProposalData {
                   border: 1px solid #D8DEE9;
                 }
 
-                .dropdown {
-                  position: relative;
-                  display: inline-block;
+                button.active {
+                    background-color: #5E81AC;
                 }
 
-                .dropdown-btn {
-                  background-color: #5c616c;
-                  color: #d8dee9;
-                  font-size: 18px;
-                  padding: 10px 20px;
-                  border-radius: 5px;
-                  border: none;
-                  cursor: pointer;
-                }
-
-                .dropdown-btn:hover {
-                  background-color: #373b41;
-                }
-
-                .dropdown-content {
-                  display: none;
-                  position: absolute;
-                  z-index: 1;
-                  top: 100%;
-                  left: 0;
-                  min-width: 300px;
-                  background-color: #2e3440;
-                  border-radius: 5px;
-                  padding: 10px;
-                  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
-                }
-
-                .dropdown-content a {
-                  display: block;
-                  color: #d8dee9;
-                  font-size: 16px;
-                  padding: 5px 10px;
-                  text-decoration: none;
-                }
-
-                .dropdown-content a:hover {
-                  background-color: #3b4252;
-                }
-
-                .dropdown:hover .dropdown-content {
-                  display: block;
-                }
                 span a {
                   color: #7fdbff; /* light blue */
                   text-decoration: none;
@@ -516,32 +475,24 @@ impl ProposalData {
     <h2>#{} - {}</h2>
     <h3>{}</h3>
 
-<div class=\"dropdown\">
-  <button class=\"dropdown-btn\">Showing</button><span id=\"topic\"> 📋 Overview</span>
-  <div class=\"dropdown-content\">
-    <a href=\"#\" onclick=\"toggleMsg(this, 'summary')\">📋 Overview</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'briefing')\">📋 Briefing</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'tally')\">📋 Sentiment</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'none')\">📋 Similar Proposals</a>
-    <a href=\"#\" onclick=\"toggleMsg(this, 'none')\">📋 Trends</a>
-  </div>
+<div style=\"text-align: left;\" class=\"button-container\">
+  <button id=\"overview-btn\">🅘 Overview</button>
+  <button id=\"briefings-btn\">⚡ Briefing</button>
 </div>
 
 </br>
 
-    <div id=\"summary\"></div>\
-
-  </br>
-  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
-  </br>
-  <div id=\"status-text\" style=\"display: block;\">{}</div>
+    <div id=\"summary\"></div>
   </br>
   {}
   </br>
-  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
+  {}
   </br>
-  <div id=\"status-text\" style=\"display: block;\">⚙️ {}</div>
-
+  {}
+  </br>
+  {}
+  </br>
+  {}
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
       <div class=\"show-more\">
@@ -584,29 +535,25 @@ impl ProposalData {
             self.proposal_id,
             self.proposal_status_icon,
             self.proposal_title,
-            self.proposal_deposit_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
-            self.proposal_state,
-            if let Some(tally_result) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;\">{}</div>",tally_result)}else{"".to_string()},
-            self.proposal_voting_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
-            self.proposal_tallying_param.as_ref().map(|x| x.to_string()).unwrap_or("".to_string()),
+            if let Some(value) = &self.proposal_deposit_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
+            format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
+            if let Some(value) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
+            if let Some(value) = &self.proposal_voting_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
+            if let Some(value) = &self.proposal_tallying_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,
-            self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0).to_string(),
+            self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0),
             self.proposal_in_deposit_period.to_string(),
             format!("{{
               summary: {:?},
               briefing: {:?},
             }};",
-            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.4 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_summary.clone()},
-            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.4 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_briefing.clone()},
+            if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_summary.clone()},
+            if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_briefing.clone()},
             ),
             r#"
-            function toggleMsg(link, key) {
-
-              var message = link.innerHTML;
-              document.getElementById("topic").innerHTML = message;
-
+            function toggleMsg(key) {
               var msgText = document.getElementsByClassName("info")[0];
               msgText.innerText = proposal_data[key];
             }
@@ -654,7 +601,31 @@ impl ProposalData {
   showMoreBtn.addEventListener('click', () => {
     description.style.maxHeight = 'none';
     showMoreBtn.style.display = 'none';
-  });"#
+  });
+
+    var overviewText = document.getElementById("overview-text");
+    var briefingsText = document.getElementById("briefings-text");
+
+    var overviewBtn = document.getElementById("overview-btn");
+    var briefingsBtn = document.getElementById("briefings-btn");
+
+    overviewBtn.addEventListener("click", function() {
+      var button1 = document.getElementById('briefings-btn');
+      var button2 = document.getElementById('overview-btn');
+      button2.classList.add("active");
+      button1.classList.remove("active");
+      toggleMsg('summary')
+    });
+
+    briefingsBtn.addEventListener("click", function() {
+
+      var button1 = document.getElementById('briefings-btn');
+      var button2 = document.getElementById('overview-btn');
+      button1.classList.add("active");
+      button2.classList.remove("active");
+      toggleMsg('briefing')
+    });
+  "#
         )
     }
 
