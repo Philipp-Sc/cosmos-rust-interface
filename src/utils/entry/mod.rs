@@ -224,8 +224,8 @@ pub struct ProposalData {
     pub proposal_status_icon: String,
     pub proposal_preview_msg: String,
     pub proposal_spam_likelihood: String,
-    pub proposal_total_votes: u64,
-    pub proposal_blockchain_total_bonded: u64,
+    pub proposal_total_votes: String,
+    pub proposal_blockchain_total_bonded: String,
 }
 
 impl ProposalData {
@@ -270,8 +270,8 @@ impl ProposalData {
             fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
             proposal_status_icon: proposal.status.to_icon(),
             proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.as_ref().map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string(),
-            proposal_total_votes: proposal.total_votes().unwrap_or(tally_result.as_ref().map(|x| x.total_votes()).flatten().unwrap_or(0u64)),
-            proposal_blockchain_total_bonded: blockchain_pool.map(|pool_ext| pool_ext.pool.0.pool.map(|x| x.bonded_tokens.parse::<u64>().ok())).flatten().flatten().unwrap_or(0),
+            proposal_total_votes: proposal.total_votes().unwrap_or(tally_result.as_ref().map(|x| x.total_votes()).flatten().unwrap_or(0f64)).to_string(),
+            proposal_blockchain_total_bonded: blockchain_pool.map(|pool_ext| pool_ext.pool.0.pool.map(|x| x.bonded_tokens.parse::<f64>().ok())).flatten().flatten().unwrap_or(0f64).to_string(),
         }
 
     }
@@ -553,7 +553,7 @@ impl ProposalData {
             if let Some(value) = &self.proposal_deposit_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
             if let Some(value) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
-            if self.proposal_total_votes != 0u64 && self.proposal_blockchain_total_bonded != 064 {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">Percentage of bonded tokens: {:.2}%</div>",(self.proposal_total_votes as f64 / self.proposal_blockchain_total_bonded as f64) * 100.0 )}else{"".to_string()},
+            if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">Percentage of bonded tokens: {:.2}%</div>",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )}else{"".to_string()},
             if let Some(value) = &self.proposal_voting_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             if let Some(value) = &self.proposal_tallying_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             self.proposal_description,
