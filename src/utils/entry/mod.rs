@@ -448,7 +448,7 @@ impl ProposalData {
                 }
 
                 span a {
-                  color: #7fdbff; /* light blue */
+                  color: #7fdbff;
                   text-decoration: none;
                   border-bottom: 1px solid #7fdbff;
                   transition: border-bottom 0.2s ease-in-out;
@@ -490,23 +490,18 @@ impl ProposalData {
 
 <div style=\"text-align: left;\" class=\"button-container\">
   <button id=\"overview-btn\">🅘 Overview</button>
-  <button id=\"briefings-btn\">⚡ Briefing</button>
+  <button id=\"briefing-btn\">⚡ Briefing</button>
 </div>
 
 </br>
 
     <div id=\"summary\"></div>
-  </br>
+
   {}
-  </br>
   {}
-  </br>
   {}
-  </br>
   {}
-  </br>
   {}
-  </br>
   {}
     <div class=\"description\">
       <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
@@ -550,12 +545,12 @@ impl ProposalData {
             self.proposal_id,
             self.proposal_status_icon,
             self.proposal_title,
-            if let Some(value) = &self.proposal_deposit_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
-            format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
-            if let Some(value) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
-            if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">Percentage of bonded tokens: {:.2}%</div>",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )}else{"".to_string()},
-            if let Some(value) = &self.proposal_voting_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
-            if let Some(value) = &self.proposal_tallying_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
+            if let Some(value) = &self.proposal_deposit_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
+            format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
+            if let Some(value) = &self.proposal_tally_result {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
+            if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">👥 Voter turnout: {:.2}%</div>",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )}else{"".to_string()},
+            if let Some(value) = &self.proposal_voting_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
+            if let Some(value) = &self.proposal_tallying_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             self.proposal_description,
             self.proposal_link,
             self.fraud_risk,
@@ -589,7 +584,7 @@ impl ProposalData {
 
 
             if (fraudRisk > 0.7) {
-                document.getElementById('container').style.backgroundColor = '#5c1421\';
+                document.getElementsByClassName('container')[0].style.backgroundColor = '#5c1421';
                 document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
@@ -597,7 +592,7 @@ impl ProposalData {
                 document.getElementById('fraud-alert').appendChild(alertDiv);
             }
             else if (strongVeto >= 0.5) {
-                document.getElementById('container').style.backgroundColor = '#5c1421\';
+                document.getElementsByClassName('container')[0].style.backgroundColor = '#5c1421';
                 document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
@@ -625,24 +620,21 @@ impl ProposalData {
     showMoreBtn.style.display = 'none';
   });
 
-    var overviewText = document.getElementById("overview-text");
-    var briefingsText = document.getElementById("briefings-text");
-
     var overviewBtn = document.getElementById("overview-btn");
-    var briefingsBtn = document.getElementById("briefings-btn");
+    var briefingBtn = document.getElementById("briefing-btn");
     overviewBtn.classList.add("active");
 
     overviewBtn.addEventListener("click", function() {
-      var button1 = document.getElementById('briefings-btn');
+      var button1 = document.getElementById('briefing-btn');
       var button2 = document.getElementById('overview-btn');
       button2.classList.add("active");
       button1.classList.remove("active");
       toggleMsg('summary')
     });
 
-    briefingsBtn.addEventListener("click", function() {
+    briefingBtn.addEventListener("click", function() {
 
-      var button1 = document.getElementById('briefings-btn');
+      var button1 = document.getElementById('briefing-btn');
       var button2 = document.getElementById('overview-btn');
       button1.classList.add("active");
       button2.classList.remove("active");
