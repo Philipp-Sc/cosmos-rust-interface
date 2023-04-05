@@ -14,7 +14,7 @@ pub fn get_key_for_tally_result(hash: u64) -> String {
     format!("{}_{}",TALLY_RESULT_PREFIX,hash)
 }
 
-pub fn get_key_for_params(blockchain_name: String, params_type: String) -> String {
+pub fn get_key_for_params(blockchain_name: &str, params_type: &str) -> String {
     format!("{}_{}_{}",PARAMS_PREFIX,blockchain_name,params_type)
 }
 
@@ -66,7 +66,7 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-                for each in proposals.into_iter().filter(|x| x.status == status && x.blockchain_name == blockchain.name) {
+                for each in proposals.into_iter().filter(|x| x.status == status && x.blockchain.name == blockchain.name) {
                     values.push(each);
                 }
             }
@@ -99,7 +99,7 @@ pub async fn fetch_params(blockchain: SupportedBlockchain, params_type: String, 
         data: Ok(ResponseResult::Blockchain(BlockchainQuery::Params(params))),
         timestamp: Utc::now().timestamp(),
     };
-    let key1 = get_key_for_params(blockchain.name,params_type);
+    let key1 = get_key_for_params(&blockchain.name,&params_type);
     task_store.push(&key1, result)?;
 
     Ok(TaskResult{ list_of_keys_modified: vec![key1] })

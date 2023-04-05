@@ -71,7 +71,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let pool = match task_store.get::<ResponseResult>(&get_key_for_pool(&proposal.blockchain_name),&RetrievalMethod::GetOk){
+                let blockchain_pool = match task_store.get::<ResponseResult>(&get_key_for_pool(&proposal.blockchain.name),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::Pool(pool))), timestamp }) => {
                         Some(pool)
                     }
@@ -79,21 +79,21 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let deposit_param = match task_store.get::<ResponseResult>(&get_key_for_params(proposal.blockchain_name.clone(),"deposit".to_string()),&RetrievalMethod::GetOk){
+                let deposit_param = match task_store.get::<ResponseResult>(&get_key_for_params(&proposal.blockchain.name,"deposit"),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::Params(params))), timestamp }) => {
                         Some(params)
                     }
                     Err(_) => {None}
                     _ => {None}
                 };
-                let voting_param = match task_store.get::<ResponseResult>(&get_key_for_params(proposal.blockchain_name.clone(),"voting".to_string()),&RetrievalMethod::GetOk){
+                let voting_param = match task_store.get::<ResponseResult>(&get_key_for_params(&proposal.blockchain.name,"voting"),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::Params(params))), timestamp }) => {
                         Some(params)
                     }
                     Err(_) => {None}
                     _ => {None}
                 };
-                let tallying_param = match task_store.get::<ResponseResult>(&get_key_for_params(proposal.blockchain_name.clone(),"tallying".to_string()),&RetrievalMethod::GetOk){
+                let tallying_param = match task_store.get::<ResponseResult>(&get_key_for_params(&proposal.blockchain.name,"tallying"),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::Params(params))), timestamp }) => {
                         Some(params)
                     }
@@ -109,65 +109,37 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let mut briefings = Vec::new();
+                let headline = "⚡ AI-Generated Briefing\n\n";
+                let info = "\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.";
+                let unavailable = "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️";
 
-                for i in 0..10 {
-                    let gpt3_result_briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("briefing{}",i)), &RetrievalMethod::GetOk) {
-                        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
-                            Some(result)
-                        }
-                        Err(_) => { None }
-                        _ => { None }
-                    };
-                    if i == 0 {
-                        let content = if let Some(completion) = gpt3_result_briefing {
-                            format!("⚡ AI-Generated Briefing\n\n{}\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.",completion.trim())
-                        }else{
-                            "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".trim().to_string()
-                        };
-                        briefings.push(("summary".to_string(),content.to_string()));
+                let summary = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("SUMMARY_{}",0)), &RetrievalMethod::GetOk) {
+                    Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
+                        format!("{}{}{}",headline,result.trim(),info)
                     }
-                    else if i == 1 {
-                        let content = if let Some(completion) = gpt3_result_briefing {
-                            format!("⚡ AI-Generated Briefing\n\n{}\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.",completion.trim())
-                        }else{
-                            "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".trim().to_string()
-                        };
-                        briefings.push(("briefing".to_string(),content.to_string()));
-                    }
-                    else{
-                        //briefings.push(("other".to_string(),format!("{}",gpt3_result_briefing.unwrap_or("This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️".to_string()).trim())));
-                    }
-                }
-
-                let data =  ProposalData {
-                        proposal_preview_msg: proposal.proposal_preview_msg(fraud_classification.clone()),
-                        proposal_api: format!("https://libreai.de/cosmos-governance-proposals/{}/{}.html",proposal.blockchain_name.to_string().to_lowercase(),proposal.get_proposal_id()),
-                        proposal_link: proposal.governance_proposal_link(),
-                        proposal_gpt_completions: briefings,
-                        proposal_state: proposal.proposal_state(),
-                        proposal_blockchain: proposal.blockchain_name.to_string(),
-                        proposal_status: proposal.status.to_string(),
-                        proposal_id: proposal.get_proposal_id(),
-                        proposal_type: proposal.content_opt().map(|x| x.to_string()),
-                        proposal_SubmitTime: proposal.time(&ProposalTime::SubmitTime).map(|t| t.seconds),
-                        proposal_DepositEndTime: proposal.time(&ProposalTime::DepositEndTime).map(|t| t.seconds),
-                        proposal_VotingStartTime: proposal.time(&ProposalTime::VotingStartTime).map(|t| t.seconds),
-                        proposal_VotingEndTime: proposal.time(&ProposalTime::VotingEndTime).map(|t| t.seconds),
-                        proposal_LatestTime: proposal.time(&ProposalTime::LatestTime).map(|t| t.seconds),
-                        proposal_title: proposal.get_title(),
-                        proposal_description: proposal.get_description(),
-                        proposal_vetoed: proposal.final_tally_with_no_with_veto_majority(),
-                        proposal_in_deposit_period: proposal.status == ProposalStatus::StatusDepositPeriod,
-                        proposal_tally_result: tally_result,
-                        proposal_tallying_param: tallying_param,
-                        proposal_deposit_param: deposit_param,
-                        proposal_voting_param: voting_param,
-                        proposal_blockchain_pool: pool,
-                        fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
-                        proposal_status_icon: proposal.status.to_icon(),
-
+                    Err(_) => { unavailable.to_string() }
+                    _ => { unavailable.to_string() }
                 };
+                let briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("BRIEFING{}",0)), &RetrievalMethod::GetOk) {
+                    Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
+                        format!("{}{}{}",headline,result.trim(),info)
+                    }
+                    Err(_) => { unavailable.to_string() }
+                    _ => { unavailable.to_string() }
+                };
+
+
+                let data =  ProposalData::new(
+                    &proposal,
+                    &fraud_classification,
+                    summary,
+                    briefing,
+                    tally_result,
+                    tallying_param,
+                    deposit_param,
+                    voting_param,
+                    blockchain_pool
+                    );
 
                 if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
                     view.push(

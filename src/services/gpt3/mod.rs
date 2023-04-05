@@ -22,28 +22,35 @@ const GPT_4_8K_MODEL: &str ="gpt-4";
 const GPT_4_32K_MODEL: &str ="gpt-4-32k";
 const GPT_3_5_TURBO_MODEL: &str = "gpt-3.5-turbo";
 
-const SYSTEM_RETRIEVE_OPTION: &str = r#"You are the rust compiler:
-- response type: Option<&str>
-Note: your response might start with one of ["None","Some"] depending on the instruction.
-Guideline:
-Let's think step by step.
-Make sure the string really exist within the given source."#;
+const SYSTEM_RETRIEVE_OPTION: &str = r#"
+As the Rust compiler,
+check if a specified string exists in the given source code.
+Response type should be Option<&str>.
+Follow the guideline to approach the task step by step,
+and ensure that you thoroughly analyze the source code to determine if the specified string is present.
+Response should be Some(&str) with the string value if found, or None if not found."#;
 
 
-const SYSTEM_SUMMARY: &str = r#"Fraud detection refuses suspicious content without explanation.
-No unfounded assumptions are made.
-JimBrowning, Coffeezilla.
-Guideline:
-First principles.
-Let's think step by step. "#;
+const SYSTEM_SUMMARY: &str = r#"
+You are tasked with generating truthful and reliable content.
+Your responses should adhere to journalistic integrity and ethical principles.
+Avoid making unfounded assumptions and do not show links/URLs.
+JimBrowning, Coffeezilla, Seymour Hersh, Ida B. Wells, Glenn Greenwald and Brian Krebs are examples of reputable sources in the field of investigative journalism.
+Think critically, use first principles, and approach each task step by step to ensure accurate and contextually appropriate output.
+Fraudulent content is not tolerated and should be flagged for review without explanation.
+Your role is to provide reliable information to readers.
+Generate content that upholds the highest standards of journalism."#;
 
-const SYSTEM_QUESTIONS: &str = r#"You go over and beyond to assist the user.
-Fraud detection refuses suspicious content without explanation.
-No unfounded assumptions are made.
-JimBrowning, Coffeezilla.
-Guideline:
-First principles.
-Let's think step by step. "#;
+const SYSTEM_QUESTIONS: &str = r#"
+You go over and beyond to assist the user.
+You are tasked with generating truthful and reliable content.
+Your responses should adhere to journalistic integrity and ethical principles.
+Avoid making unfounded assumptions and do not show links/URLs.
+JimBrowning, Coffeezilla, Seymour Hersh, Ida B. Wells, Glenn Greenwald and Brian Krebs are examples of reputable sources in the field of investigative journalism.
+Think critically, use first principles, and approach each task step by step to ensure accurate and contextually appropriate output.
+Fraudulent content is not tolerated and should be flagged for review without explanation.
+Your role is to provide reliable information to readers.
+Generate content that upholds the highest standards of journalism.""#;
 
 const TOPICS_FOR_EMBEDDING: [&str;3] = [
     "Governance proposals in the Cosmos blockchain ecosystem allow stakeholders to propose and vote on changes to the protocol, including modifications to the validator set, updates to the staking and reward mechanism, and the addition or removal of features. In order to effectively communicate the intended changes and their potential impact on the network, it is important to clearly outline the problem that the proposal aims to solve and provide a detailed description of the proposed solution. It may also be helpful to present relevant data or research to support the proposal, and to consider the broader implications of the proposal on the security, scalability, and decentralization of the network. Ultimately, the success of a governance proposal depends on the ability to clearly articulate the problem and solution and to persuade the community of the value and feasibility of the proposed changes.",
@@ -150,7 +157,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
 
                                 // SUMMARY
-                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 0));
+                                let key_for_hash = get_key_for_gpt3(hash, &format!("SUMMARY_{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_SUMMARY, &prompt, 200u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
@@ -161,7 +168,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                                 }
 
                                 // BRIEFING
-                                let key_for_hash = get_key_for_gpt3(hash, &format!("briefing{}", 1));
+                                let key_for_hash = get_key_for_gpt3(hash, &format!("BRIEFING_{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::QUESTIONS);
                                 let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_QUESTIONS, &prompt, 800u16);
                                 insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });

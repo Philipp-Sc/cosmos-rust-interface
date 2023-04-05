@@ -12,6 +12,7 @@ use std::{
 };
 use cosmos_rust_package::api::custom::types::gov::tally_ext::{TallyResultExt};
 use cosmos_rust_package::api::custom::types::gov::params_ext::{ParamsExt};
+use cosmos_rust_package::api::custom::types::gov::proposal_ext::ProposalExt;
 use cosmos_rust_package::api::custom::types::staking::pool_ext::PoolExt;
 
 #[cfg(feature = "postproc")]
@@ -197,6 +198,8 @@ trait GetField {
 pub struct ProposalData {
     pub proposal_api: String,
     pub proposal_link: String,
+    pub proposal_summary: String,
+    pub proposal_briefing: String,
     pub proposal_blockchain: String,
     pub proposal_status: String,
     pub proposal_id: u64,
@@ -209,7 +212,6 @@ pub struct ProposalData {
     pub proposal_title: String,
     pub proposal_description: String,
     pub proposal_vetoed: bool,
-    pub proposal_gpt_completions: Vec<(String,String)>,
     pub proposal_state: String,
     pub proposal_in_deposit_period: bool,
     pub fraud_risk: String,
@@ -223,6 +225,48 @@ pub struct ProposalData {
 }
 
 impl ProposalData {
+
+    pub fn new(proposal: &ProposalExt,
+               fraud_classification: &Option<f64>,
+               summary: String,
+               briefing: String,
+               tally_result: Option<TallyResultExt>,
+               tallying_param: Option<ParamsExt>,
+               deposit_param: Option<ParamsExt>,
+               voting_param: Option<ParamsExt>,
+               blockchain_pool: Option<PoolExt>
+    ) -> Self {
+
+        Self {
+            proposal_preview_msg: proposal.proposal_preview_msg(fraud_classification.clone()),
+            proposal_api: format!("https://libreai.de/cosmos-governance-proposals/{}/{}.html",proposal.blockchain.name.to_lowercase(),proposal.get_proposal_id()),
+            proposal_link: proposal.governance_proposal_link(),
+            proposal_summary: summary,
+            proposal_briefing: briefing,
+            proposal_state: proposal.proposal_state(),
+            proposal_blockchain: proposal.blockchain.name.to_string(),
+            proposal_status: proposal.status.to_string(),
+            proposal_id: proposal.get_proposal_id(),
+            proposal_type: proposal.content_opt().map(|x| x.to_string()),
+            proposal_SubmitTime: proposal.proposal.0.submit_time.clone().map(|t| t.seconds),
+            proposal_DepositEndTime: proposal.proposal.0.deposit_end_time.clone().map(|t| t.seconds),
+            proposal_VotingStartTime: proposal.proposal.0.voting_start_time.clone().map(|t| t.seconds),
+            proposal_VotingEndTime: proposal.proposal.0.voting_end_time.clone().map(|t| t.seconds),
+            proposal_LatestTime: proposal.get_timestamp_based_on_proposal_status().clone().map(|t| t.seconds),
+            proposal_title: proposal.get_title(),
+            proposal_description: proposal.get_description(),
+            proposal_vetoed: proposal.final_tally_with_no_with_veto_majority(),
+            proposal_in_deposit_period: proposal.is_in_deposit_period(),
+            proposal_tally_result: tally_result,
+            proposal_tallying_param: tallying_param,
+            proposal_deposit_param: deposit_param,
+            proposal_voting_param: voting_param,
+            proposal_blockchain_pool: blockchain_pool,
+            fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
+            proposal_status_icon: proposal.status.to_icon(),
+        }
+
+    }
 
     pub fn generate_html(&self) -> String {
 
@@ -246,8 +290,6 @@ impl ProposalData {
                   background-color: #3b4252;
                   padding: 5px;
                   border-radius: 5px 5px 0 0;
-                  color: #88C0D0;
-
                 }
                 .description {
                   margin-top: 30px;
@@ -453,11 +495,6 @@ impl ProposalData {
                 }
         "#;
 
-        let proposal_gpt_completions: HashMap<String, String> = self.proposal_gpt_completions
-            .iter()
-            .cloned()
-            .collect();
-
         format!(
             "<!DOCTYPE html>
         <html>
@@ -533,7 +570,7 @@ impl ProposalData {
     {}
 </script>
 <footer>
-  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>. Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>
+  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.
 </footer>
 
   </body>
@@ -559,8 +596,8 @@ impl ProposalData {
               summary: {:?},
               briefing: {:?},
             }};",
-            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{proposal_gpt_completions.get("summary").unwrap_or(&"".to_string()).to_owned()},
-            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{proposal_gpt_completions.get("briefing").unwrap_or(&"".to_string()).to_owned()},
+            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.4 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_summary.clone()},
+            if self.proposal_tally_result.as_ref().map(|x| x.spam_likelihood().unwrap_or(0.0)).unwrap_or(0.0) >= 0.4 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_briefing.clone()},
             ),
             r#"
             function toggleMsg(link, key) {
