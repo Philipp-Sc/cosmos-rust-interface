@@ -109,20 +109,21 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     _ => {None}
                 };
 
-                let headline = "⚡ AI-Generated Briefing\n\n";
+                let headline1 = "🅘 AI-Generated Overview\n\n";
+                let headline2 = "⚡ AI-Generated Briefing\n\n";
                 let info = "\n\n🅘 Please note this may contain errors or inaccuracies. It is intended to provide a general overview of the proposal, and should not be relied upon as a definitive or comprehensive analysis. Please review the full proposal before making any decisions.";
                 let unavailable = "This feature is currently only available for legitimate governance proposals that are actively being voted on. 🗳️";
 
                 let summary = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("SUMMARY_{}",0)), &RetrievalMethod::GetOk) {
                     Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
-                        format!("{}{}{}",headline,result.trim(),info)
+                        format!("{}{}{}",headline1,result.trim(),info)
                     }
                     Err(_) => { unavailable.to_string() }
                     _ => { unavailable.to_string() }
                 };
-                let briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("BRIEFING{}",0)), &RetrievalMethod::GetOk) {
+                let briefing = match task_store.get::<ResponseResult>(&get_key_for_gpt3(hash, &format!("BRIEFING_{}",0)), &RetrievalMethod::GetOk) {
                     Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
-                        format!("{}{}{}",headline,result.trim(),info)
+                        format!("{}{}{}",headline2,result.trim(),info)
                     }
                     Err(_) => { unavailable.to_string() }
                     _ => { unavailable.to_string() }

@@ -224,6 +224,8 @@ pub struct ProposalData {
     pub proposal_status_icon: String,
     pub proposal_preview_msg: String,
     pub proposal_spam_likelihood: String,
+    pub proposal_total_votes: u64,
+    pub proposal_blockchain_total_bonded: u64,
 }
 
 impl ProposalData {
@@ -264,10 +266,12 @@ impl ProposalData {
             proposal_tallying_param: tallying_param,
             proposal_deposit_param: deposit_param,
             proposal_voting_param: voting_param,
-            proposal_blockchain_pool: blockchain_pool,
+            proposal_blockchain_pool: blockchain_pool.clone(),
             fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
             proposal_status_icon: proposal.status.to_icon(),
-            proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string()
+            proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.as_ref().map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string(),
+            proposal_total_votes: proposal.total_votes().unwrap_or(tally_result.as_ref().map(|x| x.total_votes()).flatten().unwrap_or(0u64)),
+            proposal_blockchain_total_bonded: blockchain_pool.map(|pool_ext| pool_ext.pool.0.pool.map(|x| x.bonded_tokens.parse::<u64>().ok())).flatten().flatten().unwrap_or(0),
         }
 
     }
@@ -373,7 +377,6 @@ impl ProposalData {
                 .show-more button {
                   background-color: transparent;
                   border: none;
-                  color: #5c616c;
                   cursor: pointer;
                   text-decoration: underline;
                   font-size: 16px;
@@ -454,6 +457,16 @@ impl ProposalData {
                 span a:hover {
                   border-bottom: 2px solid #7fdbff;
                 }
+
+                .description-alert {
+                  background-color: #c94c4c;
+                  color: #fff;
+                }
+
+                .description-warning {
+                  background-color: #a27d0cdb;
+                  color: #fff;
+                }
         "#;
 
         format!(
@@ -483,6 +496,8 @@ impl ProposalData {
 </br>
 
     <div id=\"summary\"></div>
+  </br>
+  {}
   </br>
   {}
   </br>
@@ -538,6 +553,7 @@ impl ProposalData {
             if let Some(value) = &self.proposal_deposit_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
             if let Some(value) = &self.proposal_tally_result {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
+            if self.proposal_total_votes != 0u64 && self.proposal_blockchain_total_bonded != 064 {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">Percentage of bonded tokens: {:.2}%</div>",(self.proposal_total_votes as f64 / self.proposal_blockchain_total_bonded as f64) * 100.0 )}else{"".to_string()},
             if let Some(value) = &self.proposal_voting_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             if let Some(value) = &self.proposal_tallying_param {format!("<div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
             self.proposal_description,
@@ -573,24 +589,30 @@ impl ProposalData {
 
 
             if (fraudRisk > 0.7) {
+                document.getElementById('container').style.backgroundColor = '#5c1421\';
+                document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
                 alertDiv.innerText = '🚨 ALERT: High fraud risk. Remember, if it seems too good to be true, it probably is. 🚨';
                 document.getElementById('fraud-alert').appendChild(alertDiv);
             }
             else if (strongVeto >= 0.5) {
+                document.getElementById('container').style.backgroundColor = '#5c1421\';
+                document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
                 alertDiv.innerText = '🚨 ALERT: High fraud risk. High percentage of NoWithVeto votes! 🚨';
                 document.getElementById('fraud-alert').appendChild(alertDiv);
             }
             else if (fraudRisk > 0.4) {
+                document.getElementsByClassName('description')[0].classList.add('description-warning');
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
                 warningDiv.innerText = '⚠ WARNING: Moderate fraud risk. Stay safe! ⚠';
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
             else if (depositPeriod) {
+                document.getElementsByClassName('description')[0].classList.add('description-warning');
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
                 warningDiv.innerText = '⚠ CAUTION: Fraud risk during deposit period. ⚠';
@@ -608,6 +630,7 @@ impl ProposalData {
 
     var overviewBtn = document.getElementById("overview-btn");
     var briefingsBtn = document.getElementById("briefings-btn");
+    overviewBtn.classList.add("active");
 
     overviewBtn.addEventListener("click", function() {
       var button1 = document.getElementById('briefings-btn');
