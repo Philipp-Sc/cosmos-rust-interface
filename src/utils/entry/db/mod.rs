@@ -549,6 +549,12 @@ impl CosmosRustBotStore {
 
                         if let Entry::Value(Value { timestamp: _, origin: _, custom_data: CustomData::ProposalData(proposal_data), imperative: _ }) = entry.clone() {
                             // filesystem sync of generated files for proposal data
+                            let file_path = format!("./tmp/public/en/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            match std::fs::write(&file_path, serde_json::to_string_pretty(&proposal_data.generate_map()).unwrap()) {
+                                Ok(_) => {},
+                                Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
+                            };
+
                             // write governance proposal as HTML page
                             let file_path = format!("./tmp/governance_proposals/{}/{}.html", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
                             match std::fs::write(&file_path, proposal_data.generate_html()) {

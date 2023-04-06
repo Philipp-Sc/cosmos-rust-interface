@@ -278,13 +278,9 @@ impl ProposalData {
 
     }
 
-    pub fn generate_html(&self) -> String {
 
-        let mut cfg = Cfg::new();
-        cfg.minify_css = true;
-        cfg.minify_js = true;
-
-        let css_style = r#"body {
+    pub fn get_css_style(&self) -> &str {
+        r#"body {
                   font-family: Arial, sans-serif;
                   margin: 0;
                   padding: 0;
@@ -425,7 +421,7 @@ impl ProposalData {
                   cursor: pointer;
                 }
 
-                #status-btn {
+                .status-btn {
                   padding: 10px;
                   background-color: #2E3440;
                   color: white;
@@ -433,15 +429,15 @@ impl ProposalData {
                   cursor: pointer;
                 }
 
-                #status-btn:hover {
+                .status-btn:hover {
                   background-color: #3B4252;
                 }
 
-                #status-btn:active {
+                .status-btn:active {
                   background-color: #4C566A;
                 }
 
-                #status-text {
+                .status-text {
                   display: none;
                   padding: 10px;
                   background-color: #4C566A;
@@ -473,119 +469,70 @@ impl ProposalData {
                   background-color: #a27d0cdb;
                   color: #fff;
                 }
-        "#;
-
-        let output = format!(
-            "<!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset=\"UTF-8\">
-          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-          <title>#{}</title>
-          <style>
-               {}
-          </style>
-        </head>
-
-       <div class=\"container\">
-    <h3 class=\"title\" >{}</h3>
-
-    <h2>{}</h2>
-    <h2>#{} - {}</h2>
-    <h3>{}</h3>
-
-<div style=\"text-align: left;\" class=\"button-container\">
-  <button id=\"overview-btn\">🅘 Overview</button>
-  <button id=\"briefing-btn\">⚡ Briefing</button>
-</div>
-
-</br>
-
-    <div id=\"summary\"></div>
-
-  {}
-  {}
-  {}
-  {}
-  {}
-  {}
-    <div class=\"description\">
-      <span id=\"description\" style=\"white-space: pre-wrap\">{}</span>
-      <div class=\"show-more\">
-        <button id=\"show-more-btn\">Show More</button>
-      </div>
-    </div>
+        "#
+    }
 
 
-    <div class=\"button-container\">
-  <button id=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
-   </div>
+    pub fn generate_map(&self) ->  HashMap<&str,String> {
+        let unavailable = "This feature is currently only available for legitimate governance proposals.️";
+        let summary = if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {
+            unavailable.to_string()
+        }else{
+            self.proposal_summary.clone()
+        };
+        let briefing = if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {
+            unavailable.to_string()
+        }else{
+            self.proposal_briefing.clone()
+        };
+        let voter_turnout = if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {
+            format!("👥 Voter turnout: {:.2}%",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )
+        }else{
+            "".to_string()
+        };
 
-    <div id=\"fraud-alert\"></div>
-  </div>
-  <script src=\"https://unpkg.com/showdown/dist/showdown.min.js\"></script>
-  <script>
-  var converter = new showdown.Converter();
-  converter.setFlavor('github');
-  const markdownText = document.getElementById('description');
-  const htmlText = converter.makeHtml(markdownText.innerHTML);
-  console.log(htmlText);
-  markdownText.innerHTML = htmlText;
+        let map: HashMap<&str,String> = HashMap::from([
+                ("proposal_id",self.proposal_id.to_string()),
+                ("proposal_blockchain", self.proposal_blockchain_display.to_string()),
+                ("proposal_type", self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string())),
+                ("proposal_title", self.proposal_title.to_string()),
+                ("proposal_description", self.proposal_description.to_string()),
+                ("proposal_summary", summary),
+                ("proposal_briefing", briefing),
+                ("proposal_deposit_param", self.proposal_deposit_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
+                ("proposal_voting_param", self.proposal_voting_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
+                ("proposal_tallying_param", self.proposal_tallying_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
+                ("proposal_tally_result", self.proposal_tally_result.as_ref().map(|value| format!("{}",value)).unwrap_or("".to_string())),
+                ("proposal_voter_turnout",voter_turnout),
+                ("proposal_state", self.proposal_state.to_string()),
+        ]);
+        map
+    }
 
-    const fraudRisk = {};
-    const strongVeto = {};
-    const depositPeriod = {};
-    const proposal_data = {};
-    {}
-</script>
-<footer>
-  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.
-</footer>
+    pub fn generate_html(&self) -> String {
 
-  </body>
-        </html>",
-            self.proposal_id,
-            css_style,
-            self.proposal_blockchain_display,
-            self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string()),
-            self.proposal_id,
-            self.proposal_status_icon,
-            self.proposal_title,
-            if let Some(value) = &self.proposal_deposit_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
-            format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",self.proposal_state),
-            if let Some(value) = &self.proposal_tally_result {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">{}</div>",value)}else{"".to_string()},
-            if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">👥 Voter turnout: {:.2}%</div>",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )}else{"".to_string()},
-            if let Some(value) = &self.proposal_voting_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
-            if let Some(value) = &self.proposal_tallying_param {format!("</br><div id=\"status-text\" style=\"display: block;white-space: pre-wrap;\">⚙️ {}</div>",value)}else{"".to_string()},
-            self.proposal_description,
-            self.proposal_link,
-            self.fraud_risk,
-            self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0),
-            self.proposal_in_deposit_period.to_string(),
-            format!("{{
-              summary: {:?},
-              briefing: {:?},
-            }};",
-            if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_summary.clone()},
-            if self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0) >= 0.5 {"This feature is currently only available for legitimate governance proposals.️".to_string()}else{self.proposal_briefing.clone()},
-            ),
+        let mut cfg = Cfg::spec_compliant();
+        cfg.minify_css = true;
+        cfg.minify_js = true;
+
+        let proposal_json = self.generate_map();
+
+        let js_onload =
             r#"
+            var converter = new showdown.Converter();
+            converter.setFlavor('github');
+            const markdownText = document.getElementById('proposal_description');
+            const htmlText = converter.makeHtml(markdownText.innerHTML);
+            markdownText.innerHTML = htmlText;
+
             function toggleMsg(key) {
               var msgText = document.getElementsByClassName("info")[0];
-              msgText.innerText = proposal_data[key];
-            }
-            function toggleStatus() {
-              var statusText = document.getElementById("status-text");
-              if (statusText.style.display === "none") {
-                statusText.style.display = "block";
-              } else {
-                statusText.style.display = "none";
-              }
+              msgText.innerText = proposalData[key];
             }
 
             const summaryDiv = document.createElement('div');
             summaryDiv.classList.add('info');
-            summaryDiv.innerText = proposal_data['summary'];
+            summaryDiv.innerText = proposalData['summary'];
             document.getElementById('summary').appendChild(summaryDiv);
 
 
@@ -619,34 +566,133 @@ impl ProposalData {
                 warningDiv.innerText = '⚠ CAUTION: Fraud risk during deposit period. ⚠';
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
-  const showMoreBtn = document.getElementById('show-more-btn');
-  const description = document.querySelector('.description span');
-  showMoreBtn.addEventListener('click', () => {
-    description.style.maxHeight = 'none';
-    showMoreBtn.style.display = 'none';
-  });
+            const showMoreBtn = document.getElementById('show-more-btn');
+            const description = document.querySelector('.description span');
+            showMoreBtn.addEventListener('click', () => {
+                description.style.maxHeight = 'none';
+                showMoreBtn.style.display = 'none';
+            });
 
-    var overviewBtn = document.getElementById("overview-btn");
-    var briefingBtn = document.getElementById("briefing-btn");
-    overviewBtn.classList.add("active");
+            var overviewBtn = document.getElementById("overview-btn");
+            var briefingBtn = document.getElementById("briefing-btn");
+            overviewBtn.classList.add("active");
 
-    overviewBtn.addEventListener("click", function() {
-      var button1 = document.getElementById('briefing-btn');
-      var button2 = document.getElementById('overview-btn');
-      button2.classList.add("active");
-      button1.classList.remove("active");
-      toggleMsg('summary')
-    });
+            overviewBtn.addEventListener("click", function() {
+                var button1 = document.getElementById('briefing-btn');
+                var button2 = document.getElementById('overview-btn');
+                button2.classList.add("active");
+                button1.classList.remove("active");
+                toggleMsg('summary')
+            });
 
-    briefingBtn.addEventListener("click", function() {
+            briefingBtn.addEventListener("click", function() {
+                var button1 = document.getElementById('briefing-btn');
+                var button2 = document.getElementById('overview-btn');
+                button1.classList.add("active");
+                button2.classList.remove("active");
+                toggleMsg('briefing')
+            });
+  "#;
 
-      var button1 = document.getElementById('briefing-btn');
-      var button2 = document.getElementById('overview-btn');
-      button1.classList.add("active");
-      button2.classList.remove("active");
-      toggleMsg('briefing')
-    });
-  "#
+        let js = format!("
+        fetch('../../public/en/{}/{}.json')
+          .then(response => response.json())
+          .then(data => {{
+            console.log(data);
+            // assign // add elements
+
+            for (let key in data) {{
+                var element = document.getElementById(key);
+                element.innerHTML = data[key];
+            }}
+
+            // website constants
+
+            const fraudRisk = {};
+            const strongVeto = {};
+            const depositPeriod = {};
+            const proposalData = {};
+
+            // website logic
+
+            {}
+          }})",
+                         self.proposal_blockchain.to_lowercase(),
+                         self.proposal_id,
+                         self.fraud_risk,
+                         self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0),
+                         self.proposal_in_deposit_period.to_string(),
+                         format!("{{
+                              summary: {:?},
+                              briefing: {:?},
+                            }};",
+                                 proposal_json.get("proposal_summary").unwrap(),
+                                 proposal_json.get("proposal_briefing").unwrap(),
+                         ), js_onload);
+
+        let output = format!(
+            "<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset=\"UTF-8\">
+          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+          <title>#{}</title>
+          <style>
+               {}
+          </style>
+        </head>
+
+       <div class=\"container\">
+    <h3 id=\"proposal_blockchain\" class=\"title\" >ProposalBlockchain</h3>
+
+    <h2 id=\"proposal_type\">ProposalType</h2>
+    <h2>#{} - {}</h2>
+    <h3 id=\"proposal_title\">ProposalTitle</h3>
+
+<div style=\"text-align: left;\" class=\"button-container\">
+  <button id=\"overview-btn\">🅘 Overview</button>
+  <button id=\"briefing-btn\">⚡ Briefing</button>
+</div>
+
+</br>
+
+    <div id=\"summary\"></div>
+
+ </br><div id=\"proposal_deposit_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalDepositParam</div>
+ </br><div id=\"proposal_state\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalState</div>
+ </br><div id=\"proposal_tally_result\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalTallyResult</div>
+ </br><div id=\"proposal_voter_turnout\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalVoterTurnout</div>
+ </br><div id=\"proposal_voting_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalVotingParam</div>
+ </br><div id=\"proposal_tallying_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalTallyingParam</div>
+
+    <div class=\"description\">
+      <span id=\"proposal_description\" style=\"white-space: pre-wrap\">ProposalDescription</span>
+      <div class=\"show-more\">
+        <button id=\"show-more-btn\">Show More</button>
+      </div>
+    </div>
+
+
+    <div class=\"button-container\">
+  <button class=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
+   </div>
+
+    <div id=\"fraud-alert\"></div>
+  </div>
+  <script src=\"https://unpkg.com/showdown/dist/showdown.min.js\"></script>
+  <script>{}</script>
+<footer>
+  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.
+</footer>
+
+  </body>
+        </html>",
+            self.proposal_id,
+            self.get_css_style(),
+            self.proposal_id,
+            self.proposal_status_icon,
+            self.proposal_link,
+            js_onload
         );
 
         let minified = minify(output.as_bytes(), &cfg);
