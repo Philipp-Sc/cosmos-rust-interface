@@ -600,7 +600,7 @@ impl ProposalData {
             // assign // add elements
 
             for (let key in data) {{
-                if (key == 'proposal_summary' || key == proposal_briefing)
+                if (key == 'proposal_summary' || key == 'proposal_briefing')
                 {{
                 }}
                 else if (key == 'proposal_id') {{
