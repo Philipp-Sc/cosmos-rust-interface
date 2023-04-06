@@ -457,7 +457,6 @@ impl ProposalData {
                   display: none !important;
                 }
 
-
                 button.active {
                     background-color: #5E81AC;
                 }
@@ -481,6 +480,54 @@ impl ProposalData {
                 .description-warning {
                   background-color: #a27d0cdb;
                   color: #fff;
+                }
+
+                label {
+                  font-weight: bold;
+                  margin-right: 5px;
+                  color: #D8DEE9;
+                }
+
+                select {
+                  font-size: 1rem;
+                  padding: 5px 20px 5px 10px;
+                  border-radius: 4px;
+                  background-color: #2E3440;
+                  color: #D8DEE9;
+                  border: none;
+                }
+
+                select:focus {
+                  outline: none;
+                }
+
+                option {
+                  background-color: #2E3440;
+                  color: #D8DEE9;
+                  border: none;
+                  padding: 5px;
+                }
+                 .translate-container {
+                  z-index: 9999;
+                  background-color: #282c34;
+                  border-radius: 5px;
+                  padding: 10px;
+                  text-align: right;
+                }
+
+                .translate-container button {
+                  color: white;
+                  background-color: #61afef;
+                  border: none;
+                  border-radius: 5px;
+                  padding: 5px 10px;
+                  margin-bottom: 5px;
+                  font-size: 14px;
+                  cursor: pointer;
+                }
+
+                .translate-container button:hover {
+                  background-color: #5288c7;
                 }
         "#
     }
@@ -668,7 +715,17 @@ impl ProposalData {
                {}
           </style>
         </head>
+  <body>
+  <div class=\"translate-container\">
+  <label for=\"translate-select\">Translate:</label>
+  <select id=\"translate-select\"> <option value=\"en\">🇺🇸English</option>
+<option value=\"fr\">🇫🇷 Français</option>
+<option value=\"es\">🇪🇸 Español</option>
+<option value=\"de\">🇩🇪 Deutsch</option>
 
+    <!-- Add all 20 languages here -->
+  </select>
+</div>
        <div class=\"container\">
     <h3 id=\"proposal_blockchain\" class=\"init-class title\" >ProposalBlockchain</h3>
 
@@ -685,12 +742,12 @@ impl ProposalData {
 
     <div id=\"summary\"></div>
 
- </br><div id=\"proposal_deposit_param\" class=\"init-class status-text\">ProposalDepositParam</div>
- </br><div id=\"proposal_state\" class=\"init-class status-text\">ProposalState</div>
- </br><div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
- </br><div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
- </br><div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
- </br><div id=\"proposal_tallying_param\" class=\"init-class status-text\">ProposalTallyingParam</div>
+ <div id=\"proposal_deposit_param\" class=\"init-class status-text\">ProposalDepositParam</div>
+ <div id=\"proposal_state\" class=\"init-class status-text\">ProposalState</div>
+ <div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
+ <div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
+ <div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
+ <div id=\"proposal_tallying_param\" class=\"init-class status-text\">ProposalTallyingParam</div>
 
     <div class=\"description\">
       <span id=\"proposal_description\" class=\"init-class\" style=\"white-space: pre-wrap\">ProposalDescription</span>
