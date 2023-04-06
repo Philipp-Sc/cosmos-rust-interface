@@ -491,7 +491,8 @@ impl ProposalData {
             "".to_string()
         };
 
-        let map: HashMap<&str,String> = HashMap::from([ 
+        let map: HashMap<&str,String> = HashMap::from([
+                ("proposal_id", self.proposal_id.to_string()),
                 ("proposal_blockchain", self.proposal_blockchain_display.to_string()),
                 ("proposal_type", self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string())),
                 ("proposal_title", self.proposal_title.to_string()),
@@ -513,8 +514,6 @@ impl ProposalData {
         let mut cfg = Cfg::spec_compliant();
         cfg.minify_css = true;
         cfg.minify_js = true;
-
-        let proposal_json = self.generate_map();
 
         let js_onload =
             r#"
@@ -601,8 +600,20 @@ impl ProposalData {
             // assign // add elements
 
             for (let key in data) {{
-                var element = document.getElementById(key);
-                element.innerHTML = data[key];
+                if (key == 'proposal_summary' || key == proposal_briefing)
+                {{
+                }}
+                else if (key == 'proposal_id') {{
+                    var element = document.getElementById('proposal_id_1');
+                    element.innerHTML += data[key];
+
+                    var element = document.getElementById('proposal_id_2');
+                    element.innerHTML = '#' + data[key] + ' ' + element.innerHTML;
+                }}
+                else{{
+                    var element = document.getElementById(key);
+                    element.innerHTML = data[key];
+                }}
             }}
 
             // website constants
@@ -610,7 +621,10 @@ impl ProposalData {
             const fraudRisk = {};
             const strongVeto = {};
             const depositPeriod = {};
-            const proposalData = {};
+            const proposalData = {{
+                              summary: data.proposal_summary,
+                              briefing: data.proposal_briefing,
+                            }};;
 
             // website logic
 
@@ -621,13 +635,7 @@ impl ProposalData {
                          self.fraud_risk,
                          self.proposal_spam_likelihood.parse::<f64>().unwrap_or(0.0),
                          self.proposal_in_deposit_period.to_string(),
-                         format!("{{
-                              summary: {:?},
-                              briefing: {:?},
-                            }};",
-                                 proposal_json.get("proposal_summary").unwrap(),
-                                 proposal_json.get("proposal_briefing").unwrap(),
-                         ), js_onload);
+                         js_onload);
 
         let output = format!(
             "<!DOCTYPE html>
@@ -635,7 +643,7 @@ impl ProposalData {
         <head>
           <meta charset=\"UTF-8\">
           <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-          <title>#{}</title>
+          <title id=\"proposal_id_1\">#</title>
           <style>
                {}
           </style>
@@ -645,7 +653,7 @@ impl ProposalData {
     <h3 id=\"proposal_blockchain\" class=\"title\" >ProposalBlockchain</h3>
 
     <h2 id=\"proposal_type\">ProposalType</h2>
-    <h2>#{} - {}</h2>
+    <h2 id=\"proposal_id_2\">- {}</h2>
     <h3 id=\"proposal_title\">ProposalTitle</h3>
 
 <div style=\"text-align: left;\" class=\"button-container\">
@@ -686,9 +694,7 @@ impl ProposalData {
 
   </body>
         </html>",
-            self.proposal_id,
             self.get_css_style(),
-            self.proposal_id,
             self.proposal_status_icon,
             self.proposal_link,
             js
