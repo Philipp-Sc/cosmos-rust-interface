@@ -15,6 +15,8 @@ use cosmos_rust_package::api::custom::types::gov::params_ext::{ParamsExt};
 use cosmos_rust_package::api::custom::types::gov::proposal_ext::ProposalExt;
 use cosmos_rust_package::api::custom::types::staking::pool_ext::PoolExt;
 
+use minify_html::{Cfg, minify};
+
 #[cfg(feature = "postproc")]
 pub mod postproc;
 
@@ -278,6 +280,10 @@ impl ProposalData {
 
     pub fn generate_html(&self) -> String {
 
+        let mut cfg = Cfg::new();
+        cfg.minify_css = true;
+        cfg.minify_js = true;
+
         let css_style = r#"body {
                   font-family: Arial, sans-serif;
                   margin: 0;
@@ -469,7 +475,7 @@ impl ProposalData {
                 }
         "#;
 
-        format!(
+        let output = format!(
             "<!DOCTYPE html>
         <html>
         <head>
@@ -641,7 +647,10 @@ impl ProposalData {
       toggleMsg('briefing')
     });
   "#
-        )
+        );
+
+        let minified = minify(output.as_bytes(), &cfg);
+        String::from_utf8(minified.to_vec()).unwrap()
     }
 
 }

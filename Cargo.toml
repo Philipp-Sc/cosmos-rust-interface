@@ -34,6 +34,7 @@ rust-link-to-text-socket-ipc = { workspace = true, optional = true }
 nnsplit = { workspace = true, features= ["tract-backend","model-loader"], optional = true }
 #csv = "1.1.6" # temporary
 csv = "1.1.6"
+minify-html.workspace = true
 
 [features]
 default = ["interface","postproc","db"]
