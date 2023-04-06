@@ -692,7 +692,7 @@ impl ProposalData {
             self.proposal_id,
             self.proposal_status_icon,
             self.proposal_link,
-            js_onload
+            js
         );
 
         let minified = minify(output.as_bytes(), &cfg);
