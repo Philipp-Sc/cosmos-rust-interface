@@ -289,7 +289,7 @@ impl ProposalData {
                 }
                 .container {
                   width: 80%;
-                  margin: 50px auto;
+                  margin: 15px auto;
                   padding: 30px;
                   background-color: #2e3440;
                   border-radius: 5px;
@@ -717,11 +717,26 @@ impl ProposalData {
         </head>
   <body>
   <div class=\"translate-container\">
-  <label for=\"translate-select\">Translate:</label>
-  <select id=\"translate-select\"> <option value=\"en\">🇺🇸English</option>
-<option value=\"fr\">🇫🇷 Français</option>
+  <label for=\"translate-select\" id=\"translate-label\">Language:</label>
+  <select id=\"translate-select\">\
+<option value=\"en\">🇺🇸 English</option>
+<option value=\"zh\">🇨🇳 中文</option>
 <option value=\"es\">🇪🇸 Español</option>
+<option value=\"hi\">🇮🇳 हिन्दी</option>
+<option value=\"ar\">🇸🇦 العربية</option>
+<option value=\"bn\">🇧🇩 বাংলা</option>
+<option value=\"pt\">🇵🇹 Português</option>
+<option value=\"ru\">🇷🇺 Русский</option>
+<option value=\"fr\">🇫🇷 Français</option>
+<option value=\"ja\">🇯🇵 日本語</option>
 <option value=\"de\">🇩🇪 Deutsch</option>
+<option value=\"ko\">🇰🇷 한국어</option>
+<option value=\"it\">🇮🇹 Italiano</option>
+<option value=\"id\">🇮🇩 Bahasa Indonesia</option>
+<option value=\"vi\">🇻🇳 Tiếng Việt</option>
+<option value=\"th\">🇹🇭 ไทย</option>
+
+
 
     <!-- Add all 20 languages here -->
   </select>
