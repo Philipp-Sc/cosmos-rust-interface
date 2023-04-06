@@ -491,8 +491,7 @@ impl ProposalData {
             "".to_string()
         };
 
-        let map: HashMap<&str,String> = HashMap::from([
-                ("proposal_id",self.proposal_id.to_string()),
+        let map: HashMap<&str,String> = HashMap::from([ 
                 ("proposal_blockchain", self.proposal_blockchain_display.to_string()),
                 ("proposal_type", self.proposal_type.clone().unwrap_or("UnknownProposalType".to_string())),
                 ("proposal_title", self.proposal_title.to_string()),
