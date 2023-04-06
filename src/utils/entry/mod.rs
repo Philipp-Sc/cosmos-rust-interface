@@ -377,14 +377,19 @@ impl ProposalData {
                   text-align: center;
                 }
                 .show-more button {
-                  background-color: transparent;
-                  border: none;
-                  cursor: pointer;
-                  text-decoration: underline;
-                  font-size: 16px;
+                    display:inline-block;
+                    padding:5px 10px;
+                    font-size:10px;
+                    margin-top:30px;
+                    border-radius:5px;
+                    transition:background-color .3s ease;
+                    border:none;
+                    background:#5c616c;
+                    color:#d8dee9;
                 }
                 .show-more button:hover {
-                  color: #373b41;
+                    background:#373b41;
+                    cursor:pointer;
                 }
                 footer {
                   text-align: center;
@@ -438,12 +443,20 @@ impl ProposalData {
                 }
 
                 .status-text {
-                  display: none;
+                  display: block;
+                  white-space: pre-wrap;
                   padding: 10px;
                   background-color: #4C566A;
                   color: white;
                   border: 1px solid #D8DEE9;
+                  margin-bottom: 5px;
+                  margin-top: 5px;
                 }
+
+                .init-class {
+                  display: none !important;
+                }
+
 
                 button.active {
                     background-color: #5E81AC;
@@ -606,13 +619,20 @@ impl ProposalData {
                 else if (key == 'proposal_id') {{
                     var element = document.getElementById('proposal_id_1');
                     element.innerHTML += data[key];
+                    element.classList.remove('init-class');
 
                     var element = document.getElementById('proposal_id_2');
                     element.innerHTML = '#' + data[key] + ' ' + element.innerHTML;
+                    element.classList.remove('init-class');
                 }}
-                else{{
+                else if (data[key].length == 0) {{
+                    var element = document.getElementById(key);
+                    element.remove();
+                }}
+                else {{
                     var element = document.getElementById(key);
                     element.innerHTML = data[key];
+                    element.classList.remove('init-class');
                 }}
             }}
 
@@ -643,18 +663,18 @@ impl ProposalData {
         <head>
           <meta charset=\"UTF-8\">
           <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-          <title id=\"proposal_id_1\">#</title>
+          <title id=\"proposal_id_1\" class=\"init-class\">#</title>
           <style>
                {}
           </style>
         </head>
 
        <div class=\"container\">
-    <h3 id=\"proposal_blockchain\" class=\"title\" >ProposalBlockchain</h3>
+    <h3 id=\"proposal_blockchain\" class=\"init-class title\" >ProposalBlockchain</h3>
 
-    <h2 id=\"proposal_type\">ProposalType</h2>
-    <h2 id=\"proposal_id_2\">- {}</h2>
-    <h3 id=\"proposal_title\">ProposalTitle</h3>
+    <h2 id=\"proposal_type\" class=\"init-class\">ProposalType</h2>
+    <h2 id=\"proposal_id_2\" class=\"init-class\">- {}</h2>
+    <h3 id=\"proposal_title\" class=\"init-class\">ProposalTitle</h3>
 
 <div style=\"text-align: left;\" class=\"button-container\">
   <button id=\"overview-btn\">🅘 Overview</button>
@@ -665,15 +685,15 @@ impl ProposalData {
 
     <div id=\"summary\"></div>
 
- </br><div id=\"proposal_deposit_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalDepositParam</div>
- </br><div id=\"proposal_state\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalState</div>
- </br><div id=\"proposal_tally_result\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalTallyResult</div>
- </br><div id=\"proposal_voter_turnout\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalVoterTurnout</div>
- </br><div id=\"proposal_voting_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalVotingParam</div>
- </br><div id=\"proposal_tallying_param\" class=\"status-text\" style=\"display: block;white-space: pre-wrap;\">ProposalTallyingParam</div>
+ </br><div id=\"proposal_deposit_param\" class=\"init-class status-text\">ProposalDepositParam</div>
+ </br><div id=\"proposal_state\" class=\"init-class status-text\">ProposalState</div>
+ </br><div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
+ </br><div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
+ </br><div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
+ </br><div id=\"proposal_tallying_param\" class=\"init-class status-text\">ProposalTallyingParam</div>
 
     <div class=\"description\">
-      <span id=\"proposal_description\" style=\"white-space: pre-wrap\">ProposalDescription</span>
+      <span id=\"proposal_description\" class=\"init-class\" style=\"white-space: pre-wrap\">ProposalDescription</span>
       <div class=\"show-more\">
         <button id=\"show-more-btn\">Show More</button>
       </div>
