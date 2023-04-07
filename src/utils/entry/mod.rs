@@ -484,6 +484,12 @@ impl ProposalData {
                 .init-class {
                   display: none !important;
                 }
+                .content-is-empty {
+                  display: none !important;
+                }
+                .title-is-empty {
+                  display: none !important;
+                }
 
                 button.active {
                     background-color: #5E81AC;
@@ -680,17 +686,27 @@ impl ProposalData {
        const statusTexts = document.querySelectorAll(".status-text-no-pre-warp");
 
         statusTexts.forEach((statusText) => {
-          statusText.addEventListener("click", () => {
+
             const content = statusText.querySelector(".content");
-            const toggle = statusText.querySelector(".toggle");
-            if (content.classList.contains("show")) {
-              content.classList.remove("show");
-              toggle.textContent = "►";
-            } else {
-              content.classList.add("show");
-              toggle.textContent = "▼";
+            if (content.length != 0) {
+              statusTexts.classList.remove('content-is-empty');
             }
-          });
+            const content_title = statusText.querySelector(".content-title");
+            if (content_title.length != 0) {
+              statusTexts.classList.remove('title-is-empty');
+            }
+
+              statusText.addEventListener("click", () => {
+                const content = statusText.querySelector(".content");
+                const toggle = statusText.querySelector(".toggle");
+                if (content.classList.contains("show")) {
+                  content.classList.remove("show");
+                  toggle.textContent = "►";
+                } else {
+                  content.classList.add("show");
+                  toggle.textContent = "▼";
+                }
+              });
         });
   "#;
 
@@ -799,42 +815,42 @@ impl ProposalData {
 
     <div id=\"summary\"></div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Deposit Parameters
       <div id=\"proposal_deposit_param\" class=\"init-class content\">ProposalDepositParam</div>
     </div>
  </div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp title-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><span id=\"proposal_state\" class=\"init-class\">ProposalState</span>
+      <span class=\"toggle\">►</span><span id=\"proposal_state\" class=\"content-title init-class\">ProposalState</span>
       <div id=\"proposal_state_detail\" class=\"init-class content\">ProposalStateDetail</div>
     </div>
  </div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp title-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><span id=\"proposal_tally_result\" class=\"init-class\">ProposalTallyResult</span>
+      <span class=\"toggle\">►</span><span id=\"proposal_tally_result\" class=\"content-title init-class\">ProposalTallyResult</span>
       <div id=\"proposal_tally_result_detail\" class=\"init-class content\">ProposalTallyResultDetail</div>
     </div>
  </div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp title-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><span id=\"proposal_voter_turnout\" class=\"init-class\">ProposalVoterTurnout</span>
+      <span class=\"toggle\">►</span><span id=\"proposal_voter_turnout\" class=\"content-title init-class\">ProposalVoterTurnout</span>
       <div id=\"proposal_blockchain_pool_details\" class=\"init-class content\">ProposalBlockchainPoolDetail</div>
     </div>
  </div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Voting Parameters
       <div id=\"proposal_voting_param\" class=\"init-class content\">ProposalVotingParam</div>
     </div>
  </div>
 
- <div class=\"status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
       <div id=\"proposal_tallying_param\" class=\"init-class content\">ProposalTallyingParam</div>
