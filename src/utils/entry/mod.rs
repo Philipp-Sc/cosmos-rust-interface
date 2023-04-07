@@ -582,9 +582,9 @@ impl ProposalData {
                 ("proposal_description", self.proposal_description.to_string()),
                 ("proposal_summary", summary),
                 ("proposal_briefing", briefing),
-                ("proposal_deposit_param", self.proposal_deposit_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
-                ("proposal_voting_param", self.proposal_voting_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
-                ("proposal_tallying_param", self.proposal_tallying_param.as_ref().map(|value| format!("⚙️ {}",value)).unwrap_or("".to_string())),
+                ("proposal_deposit_param", self.proposal_deposit_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The deposit parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
+                ("proposal_voting_param", self.proposal_voting_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The voting parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
+                ("proposal_tallying_param", self.proposal_tallying_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The tallying parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
                 ("proposal_tally_result", self.proposal_tally_result.as_ref().map(|value| format!("{}",value)).unwrap_or("".to_string())),
                 ("proposal_voter_turnout",voter_turnout),
                 ("proposal_state", self.proposal_state.to_string()),
@@ -796,11 +796,25 @@ impl ProposalData {
 
     <div id=\"summary\"></div>
 
- <div id=\"proposal_deposit_param\" class=\"init-class status-text\">ProposalDepositParam</div>
+ <div class=\"status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span> ⚙️ Deposit Parameters
+      <div id=\"proposal_deposit_param\" class=\"init-class content\">ProposalDepositParam</div>
+    </div>
+ </div>
+
  <div id=\"proposal_state\" class=\"init-class status-text\">ProposalState</div>
  <div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
  <div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
- <div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
+
+
+ <div class=\"status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span> ⚙️ Voting Parameters
+      <div id=\"proposal_voting_param\" class=\"init-class content\">ProposalVotingParam</div>
+    </div>
+ </div>
+
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
