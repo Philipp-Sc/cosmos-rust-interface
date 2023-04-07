@@ -216,6 +216,7 @@ pub struct ProposalData {
     pub proposal_description: String,
     pub proposal_vetoed: bool,
     pub proposal_state: String,
+    pub proposal_state_details: Option<String>,
     pub proposal_in_deposit_period: bool,
     pub fraud_risk: String,
     pub proposal_tally_result: Option<TallyResultExt>,
@@ -226,8 +227,9 @@ pub struct ProposalData {
     pub proposal_status_icon: String,
     pub proposal_preview_msg: String,
     pub proposal_spam_likelihood: String,
-    pub proposal_total_votes: String,
-    pub proposal_blockchain_total_bonded: String,
+    pub proposal_voter_turnout: Option<String>,
+    pub proposal_blockchain_pool_details: Option<String>,
+    pub proposal_tally_result_detail: Option<String>,
 }
 
 impl ProposalData {
@@ -250,6 +252,7 @@ impl ProposalData {
             proposal_summary: summary,
             proposal_briefing: briefing,
             proposal_state: proposal.proposal_state(),
+            proposal_state_details: proposal.tally_details(),
             proposal_blockchain: proposal.blockchain.name.to_string(),
             proposal_blockchain_display: proposal.blockchain.display.to_string(),
             proposal_status: proposal.status.to_string(),
@@ -272,8 +275,9 @@ impl ProposalData {
             fraud_risk: fraud_classification.unwrap_or(0.0).to_string(),
             proposal_status_icon: proposal.status.to_icon(),
             proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.as_ref().map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string(),
-            proposal_total_votes: proposal.total_votes().unwrap_or(tally_result.as_ref().map(|x| x.total_votes()).flatten().unwrap_or(0f64)).to_string(),
-            proposal_blockchain_total_bonded: blockchain_pool.map(|pool_ext| pool_ext.pool.0.pool.map(|x| x.bonded_tokens.parse::<f64>().ok())).flatten().flatten().unwrap_or(0f64).to_string(),
+            proposal_voter_turnout: blockchain_pool.as_ref().map(|pool_ext| pool_ext.get_voter_turnout(proposal.total_votes().or(tally_result.as_ref().map(|x| x.total_votes()).flatten()))).flatten(),
+            proposal_blockchain_pool_details: blockchain_pool.as_ref().map(|pool_ext| pool_ext.get_pool_details()).flatten(),
+            proposal_tally_result_detail: tally_result.as_ref().map(|t| t.tally_details())
         }
 
     }
@@ -568,11 +572,6 @@ impl ProposalData {
         }else{
             self.proposal_briefing.clone()
         };
-        let voter_turnout = if self.proposal_total_votes != "0" && self.proposal_blockchain_total_bonded != "0" {
-            format!("👥 Voter turnout: {:.2}%",(self.proposal_total_votes.parse::<f64>().unwrap()/ self.proposal_blockchain_total_bonded.parse::<f64>().unwrap()) * 100.0 )
-        }else{
-            "".to_string()
-        };
 
         let map: HashMap<&str,String> = HashMap::from([
                 ("proposal_id", self.proposal_id.to_string()),
@@ -585,9 +584,12 @@ impl ProposalData {
                 ("proposal_deposit_param", self.proposal_deposit_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The deposit parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
                 ("proposal_voting_param", self.proposal_voting_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The voting parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
                 ("proposal_tallying_param", self.proposal_tallying_param.as_ref().map(|value| format!("{}",value)).unwrap_or("The tallying parameters have not been fetched yet.\nPlease refresh the page to try again.".to_string())),
-                ("proposal_tally_result", self.proposal_tally_result.as_ref().map(|value| format!("{}",value)).unwrap_or("".to_string())),
-                ("proposal_voter_turnout",voter_turnout),
+                ("proposal_tally_result", self.proposal_tally_result.as_ref().map(|value| format!("{}",value.current_tally())).unwrap_or("".to_string())),
+                ("proposal_tally_result_detail", self.proposal_tally_result.as_ref().map(|value| format!("{}",value.tally_details())).unwrap_or("".to_string())),
+                ("proposal_voter_turnout",self.proposal_voter_turnout.as_ref().map(|value| format!("👥 {}",value)).unwrap_or("".to_string())),
+                ("proposal_blockchain_pool_details",self.proposal_blockchain_pool_details.clone().unwrap_or("".to_string())),
                 ("proposal_state", self.proposal_state.to_string()),
+                ("proposal_state_detail", self.proposal_state_details.clone().unwrap_or("".to_string()).to_string()),
         ]);
         map
     }
@@ -803,10 +805,26 @@ impl ProposalData {
     </div>
  </div>
 
- <div id=\"proposal_state\" class=\"init-class status-text\">ProposalState</div>
- <div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
- <div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
+ <div class=\"status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span><div id=\"proposal_state\" class=\"init-class\">ProposalState</div>
+      <div id=\"proposal_state_detail\" class=\"init-class content\">ProposalStateDetail</div>
+    </div>
+ </div>
 
+ <div class=\"status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span><div id=\"proposal_tally_result\" class=\"init-class\">ProposalTallyResult</div>
+      <div id=\"proposal_tally_result_detail\" class=\"init-class content\">ProposalTallyResultDetail</div>
+    </div>
+ </div>
+
+ <div class=\"status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span><div id=\"proposal_voter_turnout\" class=\"init-class\">ProposalVoterTurnout</div>
+      <div id=\"proposal_blockchain_pool_details\" class=\"init-class content\">ProposalBlockchainPoolDetail</div>
+    </div>
+ </div>
 
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
