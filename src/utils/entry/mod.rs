@@ -674,19 +674,21 @@ impl ProposalData {
                 toggleMsg('briefing')
             });
 
-            const statusText = document.querySelector(".status-text-no-pre-warp");
+       const statusTexts = document.querySelectorAll(".status-text-no-pre-warp");
 
-            statusText.addEventListener("click", () => {
-              const content = statusText.querySelector(".content");
-              const toggle = statusText.querySelector(".toggle");
-              if (content.classList.contains("show")) {
-                content.classList.remove("show");
-                toggle.textContent = "►";
-              } else {
-                content.classList.add("show");
-                toggle.textContent = "▼";
-              }
-            });
+        statusTexts.forEach((statusText) => {
+          statusText.addEventListener("click", () => {
+            const content = statusText.querySelector(".content");
+            const toggle = statusText.querySelector(".toggle");
+            if (content.classList.contains("show")) {
+              content.classList.remove("show");
+              toggle.textContent = "►";
+            } else {
+              content.classList.add("show");
+              toggle.textContent = "▼";
+            }
+          });
+        });
   "#;
 
         let js = format!("
@@ -802,7 +804,7 @@ impl ProposalData {
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
-      <div class=\"content\" id=\"proposal_tallying_param\" class=\"init-class\">ProposalTallyingParam</div>
+      <div id=\"proposal_tallying_param\" class=\"init-class content\">ProposalTallyingParam</div>
     </div>
  </div>
 
