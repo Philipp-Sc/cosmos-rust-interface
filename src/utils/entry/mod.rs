@@ -610,7 +610,20 @@ impl ProposalData {
                      let timestamp = now.to_rfc2822().replace("+0000", "UTC");
                      format!("Last updated: {}",timestamp)
                  }),
-                ("proposal_submitted", self.proposal_submitted.to_string())
+                ("proposal_submitted", format!("Submitted: {}",self.proposal_submitted)), 
+                ("website_language_label","Language:".to_string()),
+                ("website_overview_button","🅘 Overview".to_string()),
+                ("website_briefing_button","⚡ Briefing".to_string()),
+                ("website_show_more_button","Show More".to_string()),
+                ("website_open_in_button","Open in 🛰️/🅺".to_string()),
+                ("website_deposit_param_label","⚙️ Deposit Parameters".to_string()),
+                ("website_voting_param_label","⚙️ Voting Parameters".to_string()),
+                ("website_tallying_param_label","⚙️ Tallying Parameters".to_string()),
+                ("website_footer","This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.".to_string()),
+                ("js_const_fraud_warning","⚠ WARNING: Moderate fraud risk. Stay safe! ⚠".to_string()),
+                ("js_const_fraud_alert","🚨 ALERT: High fraud risk. Remember, if it seems too good to be true, it probably is. 🚨".to_string()),
+                ("js_const_high_veto_alert","🚨 ALERT: High fraud risk. High percentage of NoWithVeto votes! 🚨".to_string()),
+                ("js_const_deposit_period_warning","⚠ CAUTION: Fraud risk during deposit period. ⚠".to_string()),
         ]);
         map
     }
@@ -645,7 +658,7 @@ impl ProposalData {
                 document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
-                alertDiv.innerText = '🚨 ALERT: High fraud risk. Remember, if it seems too good to be true, it probably is. 🚨';
+                alertDiv.innerText = data['js_const_fraud_alert'];
                 document.getElementById('fraud-alert').appendChild(alertDiv);
             }
             else if (strongVeto >= 0.5) {
@@ -653,45 +666,45 @@ impl ProposalData {
                 document.getElementsByClassName('description')[0].classList.add('description-alert');
                 const alertDiv = document.createElement('div');
                 alertDiv.classList.add('alert');
-                alertDiv.innerText = '🚨 ALERT: High fraud risk. High percentage of NoWithVeto votes! 🚨';
+                alertDiv.innerText = data['js_const_high_veto_alert'];
                 document.getElementById('fraud-alert').appendChild(alertDiv);
             }
             else if (fraudRisk > 0.4) {
                 document.getElementsByClassName('description')[0].classList.add('description-warning');
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
-                warningDiv.innerText = '⚠ WARNING: Moderate fraud risk. Stay safe! ⚠';
+                warningDiv.innerText = data['js_const_fraud_warning'];
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
             else if (depositPeriod) {
                 document.getElementsByClassName('description')[0].classList.add('description-warning');
                 const warningDiv = document.createElement('div');
                 warningDiv.classList.add('warning');
-                warningDiv.innerText = '⚠ CAUTION: Fraud risk during deposit period. ⚠';
+                warningDiv.innerText = data['js_const_deposit_period_warning'];
                 document.getElementById('fraud-alert').appendChild(warningDiv);
             }
-            const showMoreBtn = document.getElementById('show-more-btn');
+            const showMoreBtn = document.getElementById('website_show_more_button');
             const description = document.querySelector('.description span');
             showMoreBtn.addEventListener('click', () => {
                 description.style.maxHeight = 'none';
                 showMoreBtn.style.display = 'none';
             });
 
-            var overviewBtn = document.getElementById("overview-btn");
-            var briefingBtn = document.getElementById("briefing-btn");
+            var overviewBtn = document.getElementById("website_overview_button");
+            var briefingBtn = document.getElementById("website_briefing_button");
             overviewBtn.classList.add("active");
 
             overviewBtn.addEventListener("click", function() {
-                var button1 = document.getElementById('briefing-btn');
-                var button2 = document.getElementById('overview-btn');
+                var button1 = document.getElementById('website_briefing_button');
+                var button2 = document.getElementById('website_overview_button');
                 button2.classList.add("active");
                 button1.classList.remove("active");
                 toggleMsg('summary')
             });
 
             briefingBtn.addEventListener("click", function() {
-                var button1 = document.getElementById('briefing-btn');
-                var button2 = document.getElementById('overview-btn');
+                var button1 = document.getElementById('website_briefing_button');
+                var button2 = document.getElementById('website_overview_button');
                 button1.classList.add("active");
                 button2.classList.remove("active");
                 toggleMsg('briefing')
@@ -732,7 +745,12 @@ impl ProposalData {
             // assign // add elements
 
             for (let key in data) {{
-                if (key == 'proposal_summary' || key == 'proposal_briefing')
+
+                if (key.includes('website')) {{
+                    var element = document.getElementById(key);
+                    element.innerHTML = data[key];
+                }}
+                else if (key == 'proposal_summary' || key == 'proposal_briefing' || key.includes('js_const'))
                 {{
                 }}
                 else if (key == 'proposal_id') {{
@@ -791,7 +809,7 @@ impl ProposalData {
   <div class=\"translate-container\">
 <label id=\"last_updated\" class=\"init-class\">LastUpdated</label>
 
-  <label for=\"translate-select\" id=\"translate-label\">Language:</label>
+  <label for=\"translate-select\" id=\"website_language_label\" style=\"margin-left: auto;\">Language:</label>
   <select id=\"translate-select\">\
 <option value=\"en\">🇺🇸 English</option>
 <option value=\"zh\">🇨🇳 中文</option>
@@ -823,8 +841,8 @@ impl ProposalData {
     <h3 id=\"proposal_title\" class=\"init-class\">ProposalTitle</h3>
 
 <div style=\"text-align: left;\" class=\"button-container\">
-  <button id=\"overview-btn\">🅘 Overview</button>
-  <button id=\"briefing-btn\">⚡ Briefing</button>
+  <button id=\"website_overview_button\">🅘 Overview</button>
+  <button id=\"website_briefing_button\">⚡ Briefing</button>
 </div>
 
 </br>
@@ -833,7 +851,7 @@ impl ProposalData {
 
  <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span> ⚙️ Deposit Parameters
+      <span class=\"toggle\">►</span><span id=\"website_deposit_param_label\">⚙️ Deposit Parameters</span>
       <div id=\"proposal_deposit_param\" class=\"init-class content\">ProposalDepositParam</div>
     </div>
  </div>
@@ -861,14 +879,14 @@ impl ProposalData {
 
  <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span> ⚙️ Voting Parameters
+      <span class=\"toggle\">►</span><span id=\"website_voting_param_label\">⚙️ Voting Parameters</span>
       <div id=\"proposal_voting_param\" class=\"init-class content\">ProposalVotingParam</div>
     </div>
  </div>
 
  <div class=\"status-text-no-pre-warp content-is-empty\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
+      <span class=\"toggle\">►</span><span id=\"website_tallying_param_label\">⚙️ Tallying Parameters</span>
       <div id=\"proposal_tallying_param\" class=\"init-class content\">ProposalTallyingParam</div>
     </div>
  </div>
@@ -876,22 +894,20 @@ impl ProposalData {
     <div class=\"description\">
       <span id=\"proposal_description\" class=\"init-class\" style=\"white-space: pre-wrap\">ProposalDescription</span>
       <div class=\"show-more\">
-        <button id=\"show-more-btn\">Show More</button>
+        <button id=\"website_show_more_button\">Show More</button>
       </div>
     </div>
 
     <p id=\"proposal_submitted\">ProposalSubmitted</p>
     <div class=\"button-container\">
-  <button class=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
+  <button class=\"status-btn\" onclick=\"window.open('{}', '_blank')\" id=\"website_open_in_button\">Open in 🛰️/🅺</button>
    </div>
 
     <div id=\"fraud-alert\"></div>
   </div>
   <script src=\"https://unpkg.com/showdown/dist/showdown.min.js\"></script>
   <script>{}</script>
-<footer>
-  This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.
-</footer>
+<footer id=\"website_footer\">This website was created by <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/tree/development/workspace/cosmos-rust-bot#readme\">CosmosRustBot</a>.</br>Give <a href=\"https://github.com/Philipp-Sc/cosmos-rust-bot/issues\">Feedback</a>.</footer>
 
   </body>
         </html>",
