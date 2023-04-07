@@ -466,10 +466,11 @@ impl ProposalData {
                   margin-bottom: 5px;
                   margin-top: 5px;
                 }
-
+                .content {
+                  white-space: pre-wrap;
+                }
                 .status-text-expandable .content {
                   display: none;
-                  white-space: pre-wrap;
                 }
 
                 .status-text-expandable .toggle {
@@ -807,21 +808,21 @@ impl ProposalData {
 
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><div id=\"proposal_state\" class=\"init-class\">ProposalState</div>
+      <span class=\"toggle\">►</span><span id=\"proposal_state\" class=\"init-class\">ProposalState</span>
       <div id=\"proposal_state_detail\" class=\"init-class content\">ProposalStateDetail</div>
     </div>
  </div>
 
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><div id=\"proposal_tally_result\" class=\"init-class\">ProposalTallyResult</div>
+      <span class=\"toggle\">►</span><span id=\"proposal_tally_result\" class=\"init-class\">ProposalTallyResult</span>
       <div id=\"proposal_tally_result_detail\" class=\"init-class content\">ProposalTallyResultDetail</div>
     </div>
  </div>
 
  <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
-      <span class=\"toggle\">►</span><div id=\"proposal_voter_turnout\" class=\"init-class\">ProposalVoterTurnout</div>
+      <span class=\"toggle\">►</span><span id=\"proposal_voter_turnout\" class=\"init-class\">ProposalVoterTurnout</span>
       <div id=\"proposal_blockchain_pool_details\" class=\"init-class content\">ProposalBlockchainPoolDetail</div>
     </div>
  </div>
