@@ -453,6 +453,29 @@ impl ProposalData {
                   margin-top: 5px;
                 }
 
+                .status-text-no-pre-warp {
+                  display: block;
+                  padding: 10px;
+                  background-color: #4C566A;
+                  color: white;
+                  border: 1px solid #D8DEE9;
+                  margin-bottom: 5px;
+                  margin-top: 5px;
+                }
+
+                .status-text-expandable .content {
+                  display: none;
+                  white-space: pre-wrap;
+                }
+
+                .status-text-expandable .toggle {
+                  cursor: pointer;
+                  margin-right: 5px;
+                }
+                .status-text-expandable .content.show {
+                  display: block;
+                }
+
                 .init-class {
                   display: none !important;
                 }
@@ -650,6 +673,20 @@ impl ProposalData {
                 button2.classList.remove("active");
                 toggleMsg('briefing')
             });
+
+            const statusText = document.querySelector(".status-text2");
+
+            statusText.addEventListener("click", () => {
+              const content = statusText.querySelector(".content");
+              const toggle = statusText.querySelector(".toggle");
+              if (content.classList.contains("show")) {
+                content.classList.remove("show");
+                toggle.textContent = "►";
+              } else {
+                content.classList.add("show");
+                toggle.textContent = "▼";
+              }
+            });
   "#;
 
         let js = format!("
@@ -762,7 +799,12 @@ impl ProposalData {
  <div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
  <div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
  <div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
- <div id=\"proposal_tallying_param\" class=\"init-class status-text\">ProposalTallyingParam</div>
+ <div class=\"init-class status-text-no-pre-warp\">
+     <div class=\"status-text-expandable\">
+      <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
+      <div class=\"content\" id=\"proposal_tallying_param\">ProposalTallyingParam</div>
+    </div>
+ </div>
 
     <div class=\"description\">
       <span id=\"proposal_description\" class=\"init-class\" style=\"white-space: pre-wrap\">ProposalDescription</span>
