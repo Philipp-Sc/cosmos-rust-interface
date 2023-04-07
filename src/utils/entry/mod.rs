@@ -17,6 +17,8 @@ use cosmos_rust_package::api::custom::types::staking::pool_ext::PoolExt;
 
 use minify_html::{Cfg, minify};
 
+use cosmos_rust_package::chrono::{DateTime, Utc};
+
 #[cfg(feature = "postproc")]
 pub mod postproc;
 
@@ -230,6 +232,7 @@ pub struct ProposalData {
     pub proposal_voter_turnout: Option<String>,
     pub proposal_blockchain_pool_details: Option<String>,
     pub proposal_tally_result_detail: Option<String>,
+    pub proposal_submitted: String,
 }
 
 impl ProposalData {
@@ -277,7 +280,8 @@ impl ProposalData {
             proposal_spam_likelihood: proposal.spam_likelihood().unwrap_or(tally_result.as_ref().map(|x| x.spam_likelihood()).flatten().unwrap_or(0f64)).to_string(),
             proposal_voter_turnout: blockchain_pool.as_ref().map(|pool_ext| pool_ext.get_voter_turnout(proposal.total_votes().or(tally_result.as_ref().map(|x| x.total_votes()).flatten()))).flatten(),
             proposal_blockchain_pool_details: blockchain_pool.as_ref().map(|pool_ext| pool_ext.get_pool_details()).flatten(),
-            proposal_tally_result_detail: tally_result.as_ref().map(|t| t.tally_details())
+            proposal_tally_result_detail: tally_result.as_ref().map(|t| t.tally_details()),
+            proposal_submitted: proposal.proposal_submitted(),
         }
 
     }
@@ -520,6 +524,8 @@ impl ProposalData {
                   font-weight: bold;
                   margin-right: 5px;
                   color: #D8DEE9;
+                  text-align: left;
+                  padding: 5px 20px 5px 10px;
                 }
 
                 select {
@@ -543,6 +549,7 @@ impl ProposalData {
                 }
                  .translate-container {
                   z-index: 9999;
+                  display: flex;
                   background-color: #282c34;
                   border-radius: 5px;
                   padding: 10px;
@@ -597,6 +604,13 @@ impl ProposalData {
                 ("proposal_blockchain_pool_details",self.proposal_blockchain_pool_details.clone().unwrap_or("".to_string())),
                 ("proposal_state", self.proposal_state.to_string()),
                 ("proposal_state_detail", self.proposal_state_details.clone().unwrap_or("".to_string()).to_string()),
+                ("last_updated",
+                 {
+                     let now: DateTime<Utc> = Utc::now();
+                     let timestamp = now.to_rfc2822().replace("+0000", "UTC");
+                     format!("Last updated: {}",timestamp)
+                 }),
+                ("proposal_submitted", self.proposal_submitted.to_string())
         ]);
         map
     }
@@ -688,12 +702,12 @@ impl ProposalData {
         statusTexts.forEach((statusText) => {
 
             const content = statusText.querySelector(".content");
-            if (content.length != 0) {
-              statusTexts.classList.remove('content-is-empty');
+            if (content && content.innerHTML.length != 0) {
+              statusText.classList.remove('content-is-empty');
             }
             const content_title = statusText.querySelector(".content-title");
-            if (content_title.length != 0) {
-              statusTexts.classList.remove('title-is-empty');
+            if (content_title && content_title.innerHTML.length != 0) {
+              statusText.classList.remove('title-is-empty');
             }
 
               statusText.addEventListener("click", () => {
@@ -775,6 +789,8 @@ impl ProposalData {
         </head>
   <body>
   <div class=\"translate-container\">
+<label id=\"last_updated\" class=\"init-class\">LastUpdated</label>
+
   <label for=\"translate-select\" id=\"translate-label\">Language:</label>
   <select id=\"translate-select\">\
 <option value=\"en\">🇺🇸 English</option>
@@ -864,7 +880,7 @@ impl ProposalData {
       </div>
     </div>
 
-
+    <p id=\"proposal_submitted\">ProposalSubmitted</p>
     <div class=\"button-container\">
   <button class=\"status-btn\" onclick=\"window.open('{}', '_blank')\">Open in 🛰️/🅺</button>
    </div>
