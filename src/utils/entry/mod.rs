@@ -674,7 +674,7 @@ impl ProposalData {
                 toggleMsg('briefing')
             });
 
-            const statusText = document.querySelector(".status-text2");
+            const statusText = document.querySelector(".status-text-no-pre-warp");
 
             statusText.addEventListener("click", () => {
               const content = statusText.querySelector(".content");
@@ -799,10 +799,10 @@ impl ProposalData {
  <div id=\"proposal_tally_result\" class=\"init-class status-text\">ProposalTallyResult</div>
  <div id=\"proposal_voter_turnout\" class=\"init-class status-text\">ProposalVoterTurnout</div>
  <div id=\"proposal_voting_param\" class=\"init-class status-text\">ProposalVotingParam</div>
- <div class=\"init-class status-text-no-pre-warp\">
+ <div class=\"status-text-no-pre-warp\">
      <div class=\"status-text-expandable\">
       <span class=\"toggle\">►</span> ⚙️ Tallying Parameters
-      <div class=\"content\" id=\"proposal_tallying_param\">ProposalTallyingParam</div>
+      <div class=\"content\" id=\"proposal_tallying_param\" class=\"init-class\">ProposalTallyingParam</div>
     </div>
  </div>
 
