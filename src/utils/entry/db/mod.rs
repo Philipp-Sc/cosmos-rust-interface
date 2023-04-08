@@ -27,6 +27,8 @@ use crate::utils::entry::ValueImperative::Notify;
 
 use serde::{Serialize,Deserialize};
 
+use rand::{Rng, thread_rng};
+
 const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
 
 const REV_INDEX_PREFIX: &str = "rev_index_";
@@ -474,8 +476,13 @@ impl CosmosRustBotStore {
 
         if let Some(user_hash) = settings_part.user_hash {
             if let Some(true) = settings_part.register {
+                let generate_token = || {
+                    let mut rng = thread_rng();
+                    rng.gen::<u64>()
+                };
+
                 let item = CosmosRustBotValue::Registration(Registration {
-                    token: 0,
+                    token: generate_token() ^ user_hash,
                     user_hash,
                 });
                 let key = item.key();

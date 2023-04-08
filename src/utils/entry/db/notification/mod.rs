@@ -131,7 +131,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                     if query_part.message.contains("gov prpsl") {
                                         let mut navigation = Vec::new();
-                                        let mut navigation_row = Vec::new();
                                         let mut navigation_row2 = Vec::new();
 
                                         if &query_part.display == "default" {
@@ -142,7 +141,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                 );
                                             }
 
-                                            navigation.push(navigation_row);
                                             navigation.push(navigation_row2);
 
                                             buttons.push(navigation);
@@ -168,15 +166,18 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                 }
                 QueryPart::RegisterQueryPart(RegisterQueryPart{}) => {
 
-                    let mut buttons = Vec::new();
-
                     for i in 0..n.entries.len() {
                         match &n.entries[i] {
                             CosmosRustBotValue::Index(_) => {}
                             CosmosRustBotValue::Entry(_) => {}
                             CosmosRustBotValue::Subscription(_) => {}
                             CosmosRustBotValue::Registration(registration) => {
-                                insert_notify(db, vec![format!("Thank you for registering on our platform. Your registration token for accessing our services is {}.\n",registration.token)], buttons.clone(), registration.user_hash);
+                                let msg = if let Some(true) = n.query.settings_part.register{
+                                    format!("Registration successful! \nYour new authentication token is now available.")
+                                }else{
+                                    format!("Registration existing. \nYour authentication token is available.")
+                                };
+                                insert_notify(db, vec![msg],vec![vec![vec![("Login".to_string(), format!("https://libreai.de/public/login.html?token={}",registration.token))]]], registration.user_hash);
                             }
                         }
                     }

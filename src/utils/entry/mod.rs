@@ -806,7 +806,6 @@ impl ProposalData {
         </head>
   <body>
   <div class=\"translate-container\">
-<label id=\"last_updated\" class=\"init-class\">LastUpdated</label>
 
   <label for=\"translate-select\" id=\"website_language_label\" style=\"margin-left: auto;\">Language:</label>
   <select id=\"translate-select\">\
@@ -832,6 +831,8 @@ impl ProposalData {
     <!-- Add all 20 languages here -->
   </select>
 </div>
+
+<label id=\"last_updated\" class=\"init-class\" style=\"display: block; text-align: center;\">LastUpdated</label>
        <div class=\"container\">
     <h3 id=\"proposal_blockchain\" class=\"init-class title\" >ProposalBlockchain</h3>
 

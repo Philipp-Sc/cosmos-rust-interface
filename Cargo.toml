@@ -35,6 +35,7 @@ nnsplit = { workspace = true, features= ["tract-backend","model-loader"], option
 #csv = "1.1.6" # temporary
 csv = "1.1.6"
 minify-html.workspace = true
+rand.workspace = true
 
 [features]
 default = ["interface","postproc","db"]
