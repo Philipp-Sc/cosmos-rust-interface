@@ -176,7 +176,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                             CosmosRustBotValue::Entry(_) => {}
                             CosmosRustBotValue::Subscription(_) => {}
                             CosmosRustBotValue::Registration(registration) => {
-                                insert_notify(db, vec![format!("Thank you for registering on our platform. Your registration token for accessing our services is {}.\n",registration.token)], buttons.clone(), user_hash);
+                                insert_notify(db, vec![format!("Thank you for registering on our platform. Your registration token for accessing our services is {}.\n",registration.token)], buttons.clone(), registration.user_hash);
                             }
                         }
                     }
