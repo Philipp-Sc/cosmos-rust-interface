@@ -740,8 +740,7 @@ impl ProposalData {
         let js = format!("
         fetch('../../public/en/{}/{}.json')
           .then(response => response.json())
-          .then(data => {{
-            console.log(data);
+          .then(data => {{ 
             // assign // add elements
 
             for (let key in data) {{

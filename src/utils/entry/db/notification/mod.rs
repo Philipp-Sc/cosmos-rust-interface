@@ -136,118 +136,16 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                                         if &query_part.display == "default" {
 
-                                            /*
-                                            if let Some(command) = custom_data.command("status") {
-                                                navigation_row.push(
-                                                    ("📊 Status".to_string(), command),
-                                                );
-                                            }
-
-                                            if let Some(command) = custom_data.command("content") {
-                                                navigation_row.push(
-                                                    ("🏛 ️Proposal".to_string(), command),
-                                                );
-                                            }
-
-                                            if let Some(command) = custom_data.command("briefing0") {
-                                                navigation_row.push(
-                                                    ("⚡ Start Briefing".to_string(), command),
-                                                );
-                                            }
-                                            */
-
                                             if let Some(link) = custom_data.view_in_browser() {
                                                 navigation_row2.push(
                                                     ("Open in Browser".to_string(), link),
                                                 );
                                             }
 
-
                                             navigation.push(navigation_row);
                                             navigation.push(navigation_row2);
 
                                             buttons.push(navigation);
-                                        } else if &query_part.display == "status" {
-                                            /*
-                                            navigation.push(vec![
-                                                ("Tally".to_string(), format!("{}", query_part.message)),
-                                            ]);
-                                            navigation.push(vec![
-                                                ("Sentiment".to_string(), format!("{}", query_part.message)),
-                                            ]);
-                                            */
- 
-
-                                        } else if &query_part.display == "briefing0" { // summary
-                                            if let Some(command) = custom_data.command("briefing1"){
-                                                navigation.push(
-                                                    vec![("❓ What problem is it solving?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-                                        } else if &query_part.display == "briefing1" { // why is it important?
-                                            if let Some(command) = custom_data.command("briefing2"){
-                                                navigation.push(
-                                                    vec![("⚠️ What are the risks or downsides?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-                                        }  else if &query_part.display == "briefing2" { // risk and downsides
-
-                                            if let Some(command) = custom_data.command("briefing3"){
-                                                navigation.push(
-                                                    vec![("🛠️ Is this proposal feasible and viable?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        }  else if &query_part.display == "briefing3" {
-
-                                            if let Some(command) = custom_data.command("briefing4"){
-                                                navigation.push(
-                                                    vec![("💸 What is the economic impact?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        }  else if &query_part.display == "briefing4" {
-
-                                            if let Some(command) = custom_data.command("briefing5"){
-                                                navigation.push(
-                                                    vec![("⚖️ Is it legally compliant?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        }  else if &query_part.display == "briefing5" {
-
-                                            if let Some(command) = custom_data.command("briefing6"){
-                                                navigation.push(
-                                                    vec![("🌿 Is it sustainable?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        }  else if &query_part.display == "briefing6" {
-
-                                            if let Some(command) = custom_data.command("briefing7"){
-                                                navigation.push(
-                                                    vec![("🔎 Is it transparent and accountable?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        }  else if &query_part.display == "briefing7" {
-
-                                            if let Some(command) = custom_data.command("briefing8"){
-                                                navigation.push(
-                                                    vec![("👥 Is there community support?".to_string(), command)],
-                                                );
-                                            }
-                                            buttons.push(navigation);
-
-                                        } else if &query_part.display == "content" {
-
                                         }
 
                                     }else{
@@ -268,7 +166,21 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         }
                     }
                 }
-                QueryPart::RegisterQueryPart(_) => {}
+                QueryPart::RegisterQueryPart(RegisterQueryPart{}) => {
+
+                    let mut buttons = Vec::new();
+
+                    for i in 0..n.entries.len() {
+                        match &n.entries[i] {
+                            CosmosRustBotValue::Index(_) => {}
+                            CosmosRustBotValue::Entry(_) => {}
+                            CosmosRustBotValue::Subscription(_) => {}
+                            CosmosRustBotValue::Registration(registration) => {
+                                insert_notify(db, vec![format!("Thank you for registering on our platform. Your registration token for accessing our services is {}.\n",registration.token)], buttons.clone(), user_hash);
+                            }
+                        }
+                    }
+                }
             };
         }
     };
