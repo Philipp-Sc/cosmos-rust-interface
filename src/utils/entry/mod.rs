@@ -1025,17 +1025,7 @@ pub struct Subscription {
 impl Subscription {
     fn get_hash(query_part: &QueryPart) -> u64 {
         let mut s = DefaultHasher::new();
-        match query_part {
-            QueryPart::EntriesQueryPart(q) => {
-                q.hash(&mut s);
-            },
-            QueryPart::SubscriptionsQueryPart(q) => {
-                q.hash(&mut s);
-            },
-            QueryPart::RegisterQueryPart(q) => {
-                q.hash(&mut s);
-            }
-        }
+        query_part.hash(&mut s);
         s.finish()
     }
     fn calculate_hash(&self) -> u64 {
@@ -1080,13 +1070,34 @@ impl Registration {
         k.append(&mut b"registration".to_vec());
         k
     }
-    pub fn get_key(&self) -> Vec<u8> {
-        Registration::get_key_for_user_hash(self.user_hash)
-    }
     pub fn get_key_for_user_hash(user_hash: u64) -> Vec<u8> {
         let mut k: Vec<u8> = Registration::get_prefix();
         k.append(&mut user_hash.to_ne_bytes().to_vec());
         k
+    }
+    pub fn get_key(&self) -> Vec<u8> {
+        Registration::get_key_for_user_hash(self.user_hash)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Authorization {
+    pub is_authorized: bool,
+    pub user_hash: u64,
+}
+impl Authorization {
+    pub fn get_prefix() -> Vec<u8> {
+        let mut k: Vec<u8> = Vec::new();
+        k.append(&mut b"authorization".to_vec());
+        k
+    }
+    pub fn get_key_for_user_hash(user_hash: u64) -> Vec<u8> {
+        let mut k: Vec<u8> = Authorization::get_prefix();
+        k.append(&mut user_hash.to_ne_bytes().to_vec());
+        k
+    }
+    pub fn get_key(&self) -> Vec<u8> {
+        Authorization::get_key_for_user_hash(self.user_hash)
     }
 }
 
@@ -1169,6 +1180,16 @@ pub struct UserQuery {
     pub query_part: QueryPart,
     pub settings_part: SettingsPart,
 }
+
+impl UserQuery {
+    pub fn new(query_part: QueryPart) -> Self {
+        Self {
+            query_part,
+            settings_part: SettingsPart::default(),
+        }
+    }
+}
+
 impl Hash for UserQuery {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.query_part.hash(state);
@@ -1195,10 +1216,21 @@ pub struct SettingsPart {
     pub register: Option<bool>,
     pub user_hash: Option<u64>,
 }
+impl Default for SettingsPart {
+    fn default() -> Self {
+        Self {
+            subscribe: None,
+            unsubscribe: None,
+            register: None,
+            user_hash: None,
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum QueryPart {
     RegisterQueryPart(RegisterQueryPart),
+    AuthQueryPart(AuthQueryPart),
     EntriesQueryPart(EntriesQueryPart),
     SubscriptionsQueryPart(SubscriptionsQueryPart)
 }
@@ -1212,6 +1244,9 @@ impl Hash for QueryPart {
                 q.hash(state);
             },
             QueryPart::RegisterQueryPart(q) => {
+                q.hash(state);
+            },
+            QueryPart::AuthQueryPart(q) => {
                 q.hash(state);
             },
         }
@@ -1245,6 +1280,13 @@ impl Hash for EntriesQueryPart {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
 pub struct RegisterQueryPart {}
+
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
+pub struct AuthQueryPart {
+    pub token: u64,
+    pub user_hash: u64,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash)]
 pub struct SubscriptionsQueryPart {
@@ -1338,6 +1380,7 @@ pub enum CosmosRustBotValue {
     Entry(Entry),
     Subscription(Subscription),
     Registration(Registration),
+    Authorization(Authorization),
 }
 
 impl TryFrom<Vec<u8>> for CosmosRustBotValue {
@@ -1361,6 +1404,7 @@ impl CosmosRustBotValue {
             CosmosRustBotValue::Index(index) => index.get_key(),
             CosmosRustBotValue::Subscription(sub) => sub.get_key(),
             CosmosRustBotValue::Registration(reg) => reg.get_key(),
+            CosmosRustBotValue::Authorization(auth) => auth.get_key(),
         }
     }
     pub fn get(&self, field: &str) -> serde_json::Value {
@@ -1385,6 +1429,11 @@ impl CosmosRustBotValue {
             },
             CosmosRustBotValue::Registration(val) => match field {
                 "token" => serde_json::json!(val.token),
+                "user_hash" => serde_json::json!(val.user_hash),
+                &_ => serde_json::Value::Null,
+            },
+            CosmosRustBotValue::Authorization(val) => match field {
+                "is_authorized" => serde_json::json!(val.is_authorized),
                 "user_hash" => serde_json::json!(val.user_hash),
                 &_ => serde_json::Value::Null,
             },

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use super::super::socket::{client_send_request, Handler, spawn_socket_service};
 use std::thread::JoinHandle;
 use crate::utils::entry::db::CosmosRustBotStore;
+use crate::utils::entry::db::query::CosmosRustBotStoreInquirer;
 
 pub fn spawn_socket_query_server(socket_path: &str, cosmos_rust_bot_store: &CosmosRustBotStore) -> JoinHandle<()> {
     println!("Starting socket query server at path: {}", socket_path);
@@ -28,7 +29,7 @@ impl Handler for QueryHandler
         println!("Processing user query");
         let user_query: UserQuery = UserQuery::try_from(bytes)?;
         println!("Received user query: {:?}", user_query);
-        let entries = self.cosmos_rust_bot_store.handle_query(&user_query);
+        let entries = CosmosRustBotStoreInquirer(&self.cosmos_rust_bot_store).query(&user_query);
         let mut notification = Notification {
             query: user_query,
             entries,

@@ -30,7 +30,6 @@ pub fn export_user_meta_data(db: &sled::Db, path: &str){
     }
 }
 
-// TODO: implement when I broke things.
 pub fn import_user_meta_data(db: &sled::Db, path: &str){
     if let Ok(contents) = std::fs::read_to_string(path){
         if let Ok(user_meta_data) = serde_json::from_str::<Vec<UserMetaData>>(&contents){
@@ -75,8 +74,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 match entry {
                                     CosmosRustBotValue::Subscription(sub) => {
                                         match sub.query {
-                                            QueryPart::RegisterQueryPart(_) => {},
-                                            QueryPart::SubscriptionsQueryPart(_) => {},
                                             QueryPart::EntriesQueryPart(query_part) => {
 
                                                 let action = if subscription_query_part.message.contains("unsubscribe"){
@@ -88,6 +85,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                                 let command = format!("/{}",query_part.message.replace(" ", "_"));
                                                 insert_notify(db, vec![command.to_owned()], vec![vec![vec![(action.to_owned(),format!("{} {}",query_part.message,action.to_lowercase()))]]], user_hash);
                                             },
+                                            _ => {}
                                         }
                                     }
                                     _ => {}
@@ -118,14 +116,12 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         }
                     } else {
 
-
                         let mut msg: Vec<String> = Vec::new();
                         let mut buttons = Vec::new();
 
                         for i in 0..n.entries.len() {
 
                             match &n.entries[i] {
-                                CosmosRustBotValue::Index(_) => {}
                                 CosmosRustBotValue::Entry(Entry::Value(Value{ timestamp: _, origin: _, custom_data, imperative: _ })) => {
                                     msg.push(custom_data.display(&query_part.display));
 
@@ -150,8 +146,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                         buttons.push(vec![]);
                                     }
                                 }
-                                CosmosRustBotValue::Subscription(_) => {}
-                                CosmosRustBotValue::Registration(_) => {}
+                                _ => {}
                             }
                         }
 
@@ -168,9 +163,6 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                     for i in 0..n.entries.len() {
                         match &n.entries[i] {
-                            CosmosRustBotValue::Index(_) => {}
-                            CosmosRustBotValue::Entry(_) => {}
-                            CosmosRustBotValue::Subscription(_) => {}
                             CosmosRustBotValue::Registration(registration) => {
                                 let msg = if let Some(true) = n.query.settings_part.register{
                                     format!("Registration successful! \nYour new authentication token is now available.")
@@ -179,6 +171,22 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 };
                                 insert_notify(db, vec![msg],vec![vec![vec![("Login".to_string(), format!("https://libreai.de/public/login.html?token={}",registration.token))]]], registration.user_hash);
                             }
+                            _ => {}
+                        }
+                    }
+                }
+                QueryPart::AuthQueryPart(_) => {
+                    for i in 0..n.entries.len() {
+                        match &n.entries[i] {
+                            CosmosRustBotValue::Authorization(auth) => {
+                                let msg = if auth.is_authorized {
+                                    format!("Your auth token is valid.")
+                                }else{
+                                    format!("Your auth token is invalid.")
+                                };
+                                insert_notify(db, vec![msg],Vec::new(), auth.user_hash);
+                            }
+                            _ => {}
                         }
                     }
                 }

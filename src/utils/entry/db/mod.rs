@@ -26,8 +26,8 @@ use cosmos_rust_package::tokio::time::{sleep, Duration};
 use crate::utils::entry::ValueImperative::Notify;
 
 use serde::{Serialize,Deserialize};
+use crate::utils::entry::db::query::CosmosRustBotStoreInquirer;
 
-use rand::{Rng, thread_rng};
 
 const NOTIFICATION_SOCKET: &str = "./tmp/cosmos_rust_bot_notification_socket";
 
@@ -42,33 +42,13 @@ pub fn load_sled_db(path: &str) -> sled::Db {
         .cache_capacity( 1024 * 1024 * 1024) // 1gb
         //.use_compression(true)
         //.compression_factor(22)
-        .flush_every_ms(Some(300))
+        .flush_every_ms(Some(1000))
         .mode(Mode::HighThroughput)
         .open()
         .unwrap();
     db
 }
 
-pub fn inner_join_vec(list: &mut Vec<Vec<Vec<u8>>>) {
-    if list.len() > 1 {
-        let to_check = list.drain(1..).collect::<Vec<Vec<Vec<u8>>>>();
-        list[0].retain(|x| to_check.iter().fold(true, |sum, list_to_check| { list_to_check.contains(&x) && sum}));
-    }
-}
-
-pub fn sort_by_index(list: Vec<Vec<u8>>, order_by: Vec<Vec<u8>>) -> Vec<Vec<u8>>  {
-    let mut ordered: Vec<Vec<u8>> = Vec::new();
-    let mut unknown: Vec<Vec<u8>> = Vec::new();
-    for key in order_by {
-        if list.contains(&key) {
-            ordered.push(key);
-        }else{
-            unknown.push(key);
-        }
-    }
-    ordered.append(&mut unknown);
-    ordered
-}
 
 #[derive(Debug)]
 pub enum RetrievalMethod {
@@ -297,249 +277,6 @@ impl CosmosRustBotStore {
         }
     }
 
-    pub fn handle_query(&mut self, query: &UserQuery) -> Vec<CosmosRustBotValue> {
-
-        match &query.query_part {
-            QueryPart::EntriesQueryPart(query_part) => {
-                let result = self.query_entries(query_part);
-                self.handle_subscribe_unsubscribe_for_user(&result,query_part,&query.settings_part);
-                result
-            },
-            QueryPart::SubscriptionsQueryPart(query_part) => {
-                self.update_and_get_subscriptions_for_user(query_part, &query.settings_part)
-            }
-            QueryPart::RegisterQueryPart(_query_part) => {
-                self.register_and_get_token_for_user(&query.settings_part)
-            }
-        }
-    }
-
-    fn query_entries(&mut self, query_part: &EntriesQueryPart) -> Vec<CosmosRustBotValue> {
-
-        // Clone the filter in query_part to avoid any modifications to the original filter
-        let mut filter = query_part.filter.clone();
-
-        // Get the order_by and limit from the query_part
-        let order_by: Option<&str> = Some(&query_part.order_by);
-        let limit: Option<usize> = Some(query_part.limit);
-
-        // Create a new vector of vector of vector of bytes to hold the indices list
-        let mut indices_list: Vec<Vec<Vec<u8>>> = Vec::new();
-
-        // Initialize the order_by_index to None
-        let mut order_by_index: Option<Vec<Vec<u8>>> = None;
-
-        // Get all the indices from the index store and check if the index applies to the query.
-        // If it does, add the index's list to the indices_list and remove the unnecessary filters for the index.
-        for index in self.index_store.get_indices().filter_map(|x| if let CosmosRustBotValue::Index(index) = x { Some(index)}else{None}) {
-
-            let index_applies = query_part.indices.contains(&index.name);
-            if index_applies {
-                indices_list.push(index.list.clone());
-
-                for i in 0..filter.len() {
-                    let filter_unnecessary = filter[i].iter().filter(|(k, v)| format!("{}_{}", k, v) == index.name).count() > 0;
-
-                    if filter_unnecessary {
-                        filter[i].retain(|(k, v)| format!("{}_{}", k, v) != index.name);
-                    }
-                }
-            }
-
-            // Check if order_by is present and set order_by_index to the list of the index with the same name as order_by
-            if let Some(ord) = order_by {
-                if &index.name == &ord {
-                    order_by_index = Some(index.list.clone());
-                }
-            }
-        }
-
-        // Inner join the indices_list
-        inner_join_vec(&mut indices_list);
-
-        // Initialize selection to an empty vector
-        let mut selection: Vec<Vec<u8>> = Vec::new();
-
-        // Add the first vector in indices_list to the selection if indices_list is not empty
-        if indices_list.len()>0 {
-            selection.append(&mut indices_list[0]);
-        }
-
-        // If order_by_index is present, sort the selection by order_by_index
-        if let Some(ord) = order_by_index {
-            selection = sort_by_index(selection,ord);
-        }
-
-        // Initialize result to an empty vector
-        let mut result: Vec<CosmosRustBotValue> = Vec::new();
-
-        // Filter the entries in entry_store and add the matching entries to result
-        for item in selection.iter().map(|x| self.entry_store.0.db.get(x).map(|x| x.map(|y| y.to_vec().try_into().unwrap())).unwrap_or(None::<CosmosRustBotValue>)) {
-            // Map the selection to their corresponding entries, and iterate through them
-            if let Some(entry) = item {
-                // If the entry exists, check if it matches the filter
-                if filter.is_empty() ||
-                    filter
-                        // Iterate through each filter condition
-                        .iter().fold(false, |or, f| or || f.iter().fold(true, |sum, (k, v)|
-                        {
-                            let val = entry.get(k);
-
-                            // If the value for the key doesn't exist, return false
-                            if val == serde_json::Value::Null {
-                                false
-                            }else{
-                                // Compare the value for the key against the filter value
-                                if v.as_str() == "any" {
-                                    // If the filter value is "any", always return true
-                                    sum
-                                } else if val.is_number() {
-                                    // If the value is a number, compare it numerically
-                                    &val.to_string() == v && sum
-                                } else if let Some(s) = val.as_str() {
-                                    // If the value is a string, compare it as a string
-                                    s == v.as_str() && sum
-                                } else {
-                                    // Otherwise, the value type is not supported
-                                    false
-                                }
-                            }
-                        }
-                    ))
-                {
-                    result.push(entry);
-                }
-            }
-        }
-        if let Some(l) = limit {
-            result = result.into_iter().take(l).collect();
-        }
-        result
-    }
-
-    fn handle_subscribe_unsubscribe_for_user(&mut self, query_result: &Vec<CosmosRustBotValue>, query_part: &EntriesQueryPart, settings_part: &SettingsPart) {
-
-        if let Some(user_hash) = settings_part.user_hash {
-            let subscribe = settings_part.subscribe.unwrap_or(false);
-            let unsubscribe = settings_part.unsubscribe.unwrap_or(false);
-            if subscribe || unsubscribe {
-                let s_key = Subscription::get_key_for_entries_query(query_part);
-                match self.subscription_store.0.get(&s_key) {
-                    Ok(Some(s)) => {
-                        if let CosmosRustBotValue::Subscription(mut s) = s.to_vec().try_into().unwrap() {
-                            if subscribe {
-                                s.add_user_hash(user_hash);
-                                s.action = SubscriptionAction::AddUser;
-
-                                let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
-                                self.subscription_store.0.insert(s_key, value)
-                                    .ok();
-                            } else if unsubscribe {
-                                if s.user_list.len() <= 1 {
-                                    self.subscription_store.0.remove(&s_key).ok();
-                                } else {
-                                    s.remove_user_hash(user_hash);
-                                    s.action = SubscriptionAction::RemoveUser;
-
-                                    let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
-                                    self.subscription_store.0.insert(s_key, value)
-                                        .ok();
-                                }
-                            }
-                        }
-                    }
-                    Ok(None) => {
-                        if !unsubscribe && subscribe {
-                            let mut s = Subscription {
-                                action: SubscriptionAction::Created,
-                                query: QueryPart::EntriesQueryPart(query_part.clone()),
-                                user_list: HashSet::new(),
-                                list: Vec::new(),
-                            };
-                            s.add_user_hash(user_hash);
-                            for e in query_result {
-                                s.list.push(e.key());
-                            }
-
-                            let value: Vec<u8> = CosmosRustBotValue::Subscription(s).try_into().unwrap();
-                            self.subscription_store.0.insert(s_key, value)
-                                .ok();
-                        }
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-    }
-
-    fn register_and_get_token_for_user(&mut self, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
-
-        if let Some(user_hash) = settings_part.user_hash {
-            if let Some(true) = settings_part.register {
-                let generate_token = || {
-                    let mut rng = thread_rng();
-                    rng.gen::<u64>()
-                };
-
-                let item = CosmosRustBotValue::Registration(Registration {
-                    token: generate_token() ^ user_hash,
-                    user_hash,
-                });
-                let key = item.key();
-                let value: Vec<u8> = item.try_into().unwrap();
-
-                self.subscription_store.0.insert(key, value)
-                    .ok();
-            }
-
-            let key = Registration::get_key_for_user_hash(user_hash);
-
-            return match self.subscription_store.0.get(key) {
-                Err(_e) => {
-                    vec![]
-                }
-                Ok(None) => {
-                    vec![]
-                }
-                Ok(Some(v)) => {
-                    let result: CosmosRustBotValue = v.to_vec().try_into().unwrap();
-                    vec![result]
-                }
-            }
-
-        }
-        vec![]
-    }
-
-    fn update_and_get_subscriptions_for_user(&mut self, _query_part: &SubscriptionsQueryPart, settings_part: &SettingsPart) -> Vec<CosmosRustBotValue> {
-        let mut res: Vec<CosmosRustBotValue> = Vec::new();
-
-        if let Some(user_hash) = settings_part.user_hash {
-            let mut r = self.subscription_store.0.db.scan_prefix(&Subscription::get_prefix()[..]);
-            while let Some(Ok(item)) = r.next() {
-                let val = item.1.to_vec().try_into().unwrap();
-                match &val {
-                    CosmosRustBotValue::Subscription(subscription) => {
-                        if subscription.contains_user_hash(user_hash) {
-                            if settings_part.unsubscribe.unwrap_or(false) {
-                                let mut new_subscription = subscription.clone();
-                                new_subscription.remove_user_hash(user_hash);
-                                new_subscription.action = SubscriptionAction::RemoveUser;
-                                let new_val = CosmosRustBotValue::Subscription(new_subscription);
-                                let key = new_val.key();
-                                let value: Vec<u8> = new_val.try_into().unwrap();
-                                self.subscription_store.0.db.insert(key,value).ok();
-                            }
-                            res.push(val);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        res
-    }
-
     pub fn update_items(&mut self, mut items: Vec<CosmosRustBotValue>) {
 
         self.entry_store.remove_entries_not_in_items(&items); // outdated entries/indices
@@ -593,7 +330,7 @@ impl CosmosRustBotStore {
 
     }
 
-    pub fn update_outdated_subscriptions(&mut self) {
+    fn update_outdated_subscriptions(&mut self) {
         // refreshing subscriptions by updating them if their content changed.
         for mut subscription in self.subscription_store.get_subscriptions() {
             if self.subscription_outdated(&mut subscription){
@@ -606,11 +343,11 @@ impl CosmosRustBotStore {
         }
     }
 
-    pub fn subscription_outdated(&mut self, subscription: &mut Subscription) -> bool {
+    fn subscription_outdated(&mut self, subscription: &mut Subscription) -> bool {
 
         if let QueryPart::EntriesQueryPart(query_part) = &subscription.query
         {
-            let query_result = self.query_entries(query_part);
+            let query_result = CosmosRustBotStoreInquirer(&self).entries_query(query_part);
 
             let mut added_items = false;
             let mut removed_items = false;
@@ -633,12 +370,13 @@ impl CosmosRustBotStore {
         false
     }
 
-    pub fn spawn_notify_on_subscription_update_thread(&mut self) -> cosmos_rust_package::tokio::task::JoinHandle<()> {
+    pub fn spawn_notify_on_subscription_update_task(&mut self) -> cosmos_rust_package::tokio::task::JoinHandle<()> {
         let mut copy_self = self.clone();
         cosmos_rust_package::tokio::spawn(async move {
 
-            // Delay the task for 1 minute (60 seconds)
-            sleep(Duration::from_secs(60)).await;
+            // Delay the task for 5 minute (5*60 seconds)
+            // Reason: This delay allows the state to get up-to-date first.
+            sleep(Duration::from_secs(5*60)).await;
 
             copy_self.subscription_store.register_subscriber().unwrap();
 
@@ -647,16 +385,9 @@ impl CosmosRustBotStore {
                 if let Ok(CosmosRustBotValue::Subscription(s)) = updated {
                     if s.action == SubscriptionAction::Update  {
 
-                        let query: UserQuery = UserQuery {
-                            query_part: s.query,
-                            settings_part: SettingsPart {
-                                subscribe: None,
-                                unsubscribe: None,
-                                register: None,
-                                user_hash: None,
-                            }
-                        };
-                        let mut entries = copy_self.handle_query(&query);
+                        let query: UserQuery = UserQuery::new(s.query);
+
+                        let mut entries = CosmosRustBotStoreInquirer(&copy_self).query(&query);
                         entries.retain(|x| {
                             if let CosmosRustBotValue::Entry(Entry::Value(v)) = x {
                                 v.imperative == ValueImperative::Notify
