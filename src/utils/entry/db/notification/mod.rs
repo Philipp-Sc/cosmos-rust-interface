@@ -169,7 +169,7 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                                 }else{
                                     format!("Registration existing. \nYour authentication token is available.")
                                 };
-                                insert_notify(db, vec![msg],vec![vec![vec![("Login".to_string(), format!("https://libreai.de/public/login.html?token={}",registration.token))]]], registration.user_hash);
+                                insert_notify(db, vec![msg],vec![vec![vec![("Login".to_string(), format!("https://libreai.de/public/login.html?user_id={}&password={}",registration.user_hash,registration.token))]]], registration.user_hash);
                             }
                             _ => {}
                         }
