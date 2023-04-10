@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
+use anyhow::anyhow;
 use cosmos_rust_package::chrono::Utc;
 use log::{debug, error, info};
 use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, ProposalStatus};
@@ -8,8 +9,8 @@ use crate::utils::entry::*;
 use crate::utils::response::{ResponseResult, BlockchainQuery, GPT3ResultStatus, TaskResult, FraudClassification, LinkToTextResult};
 use rust_openai_gpt_tools_socket_ipc::ipc::{client_send_openai_gpt_chat_completion_request, client_send_openai_gpt_embedding_request, client_send_openai_gpt_text_completion_request, OpenAIGPTResult};
 use rust_openai_gpt_tools_socket_ipc::ipc::{OpenAIGPTChatCompletionResult,OpenAIGPTEmbeddingResult};
-use crate::services::fraud_detection::get_key_for_fraud_detection;
-use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash};
+use crate::services::fraud_detection::{get_key_for_fraud_detection, validate_fraud_detection_result};
+use crate::services::link_to_text::{extract_links, get_key_for_link_to_text, link_to_id, string_to_hash, retrieve_embedded_data_from_links, get_embedded_data_from_link};
 
 use nnsplit::NNSplitOptions;
 use nnsplit::tract_backend::NNSplit;
@@ -144,7 +145,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
                 for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
                     let hash = each.to_hash();
 
-                    if fraud_detection_result_is_ok(&task_store,hash) {
+                    if validate_fraud_detection_result(&task_store,hash) {
 
                         let title = each.get_title();
                         let description = each.get_description();
@@ -152,35 +153,23 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                         match retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
                             Ok(context) => {
-                                info!("Successfully retrieved context from description and community link to text results for prompt.");
+                                info!("Successfully retrieved context for prompt. (hash: {})",hash);
                                 debug!("Context:\n{:?}", context);
-
 
                                 // SUMMARY
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("SUMMARY_{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::SUMMARY);
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_SUMMARY, &prompt, 200u16);
-                                insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
-                                if insert_result {
-                                    info!("Inserted GPT-3 chat completion result for {}",&key_for_hash);
-                                }else{
-                                    info!("GPT-3 chat completion result already exists for {}",&key_for_hash);
-                                }
+                                try_get_or_insert_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_SUMMARY, &prompt, 200u16).ok();
+
 
                                 // BRIEFING
                                 let key_for_hash = get_key_for_gpt3(hash, &format!("BRIEFING_{}", 0));
                                 let prompt = get_prompt_for_gpt3(&context, PromptKind::QUESTIONS);
-                                let insert_result = if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_QUESTIONS, &prompt, 800u16);
-                                insert_progress(&task_store, &key, &mut keys, &mut number_of_new_results, &mut number_of_stored_results, if insert_result { Some(key_for_hash.clone()) } else { None });
-                                if insert_result {
-                                    info!("Inserted GPT-3 chat completion result for {}",&key_for_hash);
-                                }else{
-                                    info!("GPT-3 chat completion result already exists for {}",&key_for_hash);
-                                }
+                                try_get_or_insert_chat_completion_result(&task_store, &key_for_hash, &GPT_4_8K_MODEL, &SYSTEM_QUESTIONS, &prompt, 800u16).ok();
 
                             }
                             Err(err) => {
-                                error!("Failed to retrieve context from description and community link to text results for prompt: {}", err.to_string());
+                                error!("Failed to retrieve context for prompt: {}", err.to_string());
                             }
                         }
                     }
@@ -194,7 +183,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
     })
 }
 
-
+/*
 pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<String>, number_of_new_results: &mut usize, number_of_stored_results: &mut usize, insert_result: Option<String>) {
     if let Some(inserted_key) = insert_result {
         *number_of_new_results += 1usize;
@@ -213,20 +202,18 @@ pub fn insert_progress(task_store: &TaskMemoryStore, key: &str, keys: &mut Vec<S
         *number_of_stored_results += 1usize;
     }
 }
-
-
-
+*/
 
 pub fn retrieve_context_from_description_and_community_link_to_text_results_for_prompt(task_store: &TaskMemoryStore, description: &str, text_triggers: Vec<String>) -> anyhow::Result<String> {
 
     let description_text_result =  LinkToTextResult::new(description,vec![description.to_string()],vec![vec![true]],300);
     let mut linked_text = vec![description_text_result];
 
-    if let Ok(Some(item)) = retrieve_community_link_to_text_result(&task_store,description) {
+    if let Some(item) = retrieve_community_portal_data_from_description(&task_store,description)? {
         linked_text.push(item);
     }
 
-    linked_text.append(&mut retrieve_all_link_to_text_results(&task_store,description)?);
+    linked_text.append(&mut retrieve_embedded_data_from_links(&task_store, description)?);
 
 
     // <
@@ -240,7 +227,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
 
     for chunk in &prompt_text_result.text_nodes {
         let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
-        let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.to_string()])?;
+        let mut item = try_get_or_insert_embedding_result(&task_store, &key_for_hash, vec![chunk.to_string()])?;
         prompt_embedding.append(&mut item.result);
     }
     // >
@@ -251,7 +238,7 @@ pub fn retrieve_context_from_description_and_community_link_to_text_results_for_
     for i in 0..linked_text.len() {
             for chunk in &linked_text[i].text_nodes {
                 let key_for_hash = get_key_for_gpt3(string_to_hash(&chunk), "embedding");
-                let mut item = if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(&task_store, &key_for_hash, vec![chunk.clone()])?;
+                let mut item = try_get_or_insert_embedding_result(&task_store, &key_for_hash, vec![chunk.clone()])?;
                 linked_text_embeddings.push(item.result.into_iter().zip(vec![(chunk.to_string(),linked_text[i].link.to_string())].into_iter()).collect::<Vec<(Vec<f32>,(String,String))>>());
             }
     }
@@ -318,130 +305,49 @@ fn cosine_similarity(vec1: &Vec<f32>, vec2: &Vec<f32>) -> f32 {
     dot_product / (norm1 * norm2)
 }
 
-pub fn retrieve_all_link_to_text_results(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Vec<LinkToTextResult>> {
 
-    let mut extracted_links: Vec<String> = extract_links(description);
+pub fn get_community_portal_link(task_store: &TaskMemoryStore, link_containing_text: &str) -> anyhow::Result<Option<String>> {
 
-    let mut linked_text = Vec::new();
-
-    for i in 0..extracted_links.len() {
-        let link_key = get_key_for_link_to_text(&link_to_id(&extracted_links[i]));
-        if task_store.contains_key(&link_key) {
-            match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
-                Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
-                    linked_text.push(link_to_text_result);
-                }
-                Ok(Maybe { data: Err(err), .. }) => {
-                    error!("Skipping result for: {}, reported error: {}",&extracted_links[i], err.to_string());
-                }
-                Err(err) => {
-                    error!("Skipping result for: {}, reported error: {}",&extracted_links[i], err.to_string());
-                }
-                _ => {
-                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
-                }
-            }
-        } else {
-            return Err(anyhow::anyhow!("Error: Unreachable: LinkToTextResult not found."));
-        }
-    }
-    Ok(linked_text)
-}
-
-pub fn retrieve_community_link_to_text_result(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Option<LinkToTextResult>> {
-
-    let mut extracted_links: Vec<String> = extract_links(description);
+    let mut extracted_links: Vec<String> = extract_links(link_containing_text);
 
     if !extracted_links.is_empty() {
 
-        let key_for_link_to_community = get_key_for_gpt3(string_to_hash(description), &format!("link_to_community{}", 0));
-        let prompt = get_prompt_for_gpt3(description, PromptKind::LINK_TO_COMMUNITY);
-        if_key_does_not_exist_insert_openai_gpt_chat_completion_result(&task_store, &key_for_link_to_community, &GPT_3_5_TURBO_MODEL, &SYSTEM_RETRIEVE_OPTION, &prompt, 100u16);
+        let key_for_link_to_community = get_key_for_gpt3(string_to_hash(link_containing_text), &format!("link_to_community{}", 0));
+        let prompt = get_prompt_for_gpt3(link_containing_text, PromptKind::LINK_TO_COMMUNITY);
 
-        if task_store.contains_key(&key_for_link_to_community) {
-            match task_store.get::<ResponseResult>(&key_for_link_to_community, &RetrievalMethod::GetOk) {
-                Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(OpenAIGPTChatCompletionResult { result, .. }))), .. }) => {
-                    if result.contains("None") || !result.contains("Some") {
-                        extracted_links = Vec::new();
-                    } else {
-                        extracted_links.retain(|x| result.contains(x));
-                    }
-                }
-                Ok(Maybe { data: Err(err), .. }) => {
-                    return Err(anyhow::anyhow!(err));
-                }
-                Err(err) => {
-                    return Err(anyhow::anyhow!(err));
-                }
-                _ => {
-                    return Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."));
-                }
-            }
-        }
+        let result = try_get_or_insert_chat_completion_result(&task_store, &key_for_link_to_community, &GPT_3_5_TURBO_MODEL, &SYSTEM_RETRIEVE_OPTION, &prompt, 100u16)?;
 
-        if !extracted_links.is_empty() {
-            let link_key = get_key_for_link_to_text(&link_to_id(&extracted_links[0]));
-
-            if task_store.contains_key(&link_key) {
-                match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
-                    Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
-                        Ok(Some(link_to_text_result))
-                    }
-                    Ok(Maybe { data: Err(err), .. }) => {
-                        Err(anyhow::anyhow!(err))
-                    }
-                    Err(err) => {
-                        Err(anyhow::anyhow!(err))
-                    }
-                    _ => {
-                        Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."))
-                    }
-                }
-            } else {
-                Err(anyhow::anyhow!("Error: Unreachable: LinkToTextResult not found."))
-            }
-        } else {
+        if result.result.contains("None") || !result.result.contains("Some") {
             Ok(None)
+        } else {
+            extracted_links.retain(|x| result.result.contains(x));
+            Ok(extracted_links.get(0).map(|x| x.to_owned()))
         }
+
+
     }else{
         Ok(None)
     }
 }
 
-pub fn fraud_detection_result_is_ok(task_store: &TaskMemoryStore, hash: u64) -> bool {
+pub fn retrieve_community_portal_data_from_description(task_store: &TaskMemoryStore, description: &str) -> anyhow::Result<Option<LinkToTextResult>> {
 
-    match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
-        Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
-            if let Some(spam_likelihood) = tally_result.spam_likelihood() {
-                if spam_likelihood >=0.5 {
-                    return false;
-                }
-            }
+    match get_community_portal_link(task_store,description) {
+        Ok(Some(link)) => {
+            Ok(get_embedded_data_from_link(task_store,&link)?.ok())
         }
-        _ => {}
-    };
-
-    let fraud_detection_key_for_hash = get_key_for_fraud_detection(hash);
-
-    if task_store.contains_key(&fraud_detection_key_for_hash) {
-        match task_store.get::<ResponseResult>(&fraud_detection_key_for_hash, &RetrievalMethod::GetOk) {
-            Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification { fraud_prediction, .. })), .. }) => {
-                if fraud_prediction < 0.7 {
-                    return true;
-                }else {
-                    return false;
-                }
-            }
-            Err(_) => { return false; }
-            _ => { return false; }
+        _ => { 
+            Ok(None)
         }
     }
-    return false;
 }
 
-pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store: &TaskMemoryStore, key: &str, model_name: &str, system: &str, prompt: &str, completion_token_limit: u16) -> bool {
 
-    if !task_store.contains_key(&key) {
+pub fn try_get_or_insert_chat_completion_result(task_store: &TaskMemoryStore, key: &str, model_name: &str, system: &str, prompt: &str, completion_token_limit: u16) -> anyhow::Result<OpenAIGPTChatCompletionResult> {
+
+    let mut item = task_store.get::<ResponseResult>(&key, &RetrievalMethod::GetOk);
+    
+    if item.is_err() {
 
         info!("Requesting OpenAI GPT Chat Completion for key '{}'", key);
         let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_chat_completion_request("./tmp/rust_openai_gpt_tools_socket", model_name.to_owned(),system.to_owned(), prompt.to_owned(), completion_token_limit);
@@ -470,34 +376,18 @@ pub fn if_key_does_not_exist_insert_openai_gpt_chat_completion_result(task_store
             },
             timestamp: Utc::now().timestamp(),
         };
-        task_store.push(&key, result).ok();
-        debug!("Stored OpenAI GPT embedding result for key '{}'", key);
-        true
+        if let Err(e) = task_store.push(key, result.clone()) {
+            error!("Failed to insert GPT-3 chat completion result for {}: {:?}", key, &e);
+            Err(e)?
+        }
+        info!("Inserted GPT-3 chat completion result for {}", key);
+        item = Ok(result);
     }else{
-        false
+        info!("GPT-3 chat completion result already exists for {}", key);
     }
-}
-
-pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> anyhow::Result<OpenAIGPTEmbeddingResult> {
-
-    if !task_store.contains_key(key) {
-        info!("Requesting OpenAI GPT embedding for key '{}'", key);
-        let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
-        debug!("Received response from OpenAI GPT: {:?}", result);
-
-        let result: Maybe<ResponseResult> = Maybe {
-            data: match result {
-                Ok(data) => Ok(ResponseResult::OpenAIGPTResult(data)),
-                Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
-            },
-            timestamp: Utc::now().timestamp(),
-        };
-        task_store.push(key, result)?;
-        debug!("Stored OpenAI GPT embedding result for key '{}'", key);
-    }
-    match task_store.get::<ResponseResult>(key, &RetrievalMethod::GetOk) {
-        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(embedding_result))), .. }) => {
-            Ok(embedding_result)
+    match item {
+        Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(result))), .. }) => {
+            Ok(result)
         }
         Ok(Maybe { data: Err(err), .. }) => {
             Err(anyhow::anyhow!(err))
@@ -506,9 +396,55 @@ pub fn if_key_does_not_exist_insert_openai_gpt_embedding_result_else_retrieve(ta
             Err(anyhow::anyhow!(err))
         }
         _ => {
-            Err(anyhow::anyhow!("Error: Unreachable: incorrect ResponseResult type."))
+            error!("Error: Unreachable: incorrect ResponseResult type for {}",key);
+            panic!();
         }
     }
 
+}
+
+pub fn try_get_or_insert_embedding_result(task_store: &TaskMemoryStore, key: &str, texts: Vec<String>) -> anyhow::Result<OpenAIGPTEmbeddingResult> {
+
+
+        let mut item = task_store.get::<ResponseResult>(&key, &RetrievalMethod::GetOk);
+
+        if item.is_err() {
+
+            info!("Requesting OpenAI GPT embedding for key '{}'", key);
+            let result: anyhow::Result<OpenAIGPTResult> = client_send_openai_gpt_embedding_request("./tmp/rust_openai_gpt_tools_socket", texts);
+            debug!("Received response from OpenAI GPT: {:?}", result);
+
+            let result: Maybe<ResponseResult> = Maybe {
+                data: match result {
+                    Ok(data) => Ok(ResponseResult::OpenAIGPTResult(data)),
+                    Err(err) => Err(MaybeError::AnyhowError(err.to_string())),
+                },
+                timestamp: Utc::now().timestamp(),
+            };
+            if let Err(e) = task_store.push(key, result.clone()) {
+                error!("Failed to insert GPT-3 embedding result for {}: {:?}", key, &e);
+                Err(e)?
+            }
+            info!("Inserted GPT-3 embedding result for {}", key);
+            item = Ok(result);
+        }
+        else{
+            info!("GPT-3 embedding result already exists for {}", key);
+        }
+        match item {
+            Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(result))), .. }) => {
+                Ok(result)
+            }
+            Ok(Maybe { data: Err(err), .. }) => {
+                Err(anyhow::anyhow!(err))
+            }
+            Err(err) => {
+                Err(anyhow::anyhow!(err))
+            }
+            _ => {
+                error!("Error: Unreachable: incorrect ResponseResult type for {}",key);
+                panic!();
+            }
+        }
 }
 

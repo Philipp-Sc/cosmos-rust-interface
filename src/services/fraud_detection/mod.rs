@@ -8,6 +8,7 @@ use rust_bert_fraud_detection_socket_ipc::ipc::client_send_rust_bert_fraud_detec
 use rust_bert_fraud_detection_socket_ipc::ipc::RustBertFraudDetectionResult;
 
 use csv::Writer;
+use crate::blockchain::cosmos::gov::get_key_for_tally_result;
 
 const FRAUD_DETECTION_PREFIX: &str = "FRAUD_DETECTION";
 
@@ -112,4 +113,36 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
     Ok(TaskResult{
         list_of_keys_modified: keys
     })
+}
+
+
+pub fn validate_fraud_detection_result(task_store: &TaskMemoryStore, hash: u64) -> bool {
+
+    match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
+        Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
+            if let Some(spam_likelihood) = tally_result.spam_likelihood() {
+                if spam_likelihood >=0.5 {
+                    return false;
+                }
+            }
+        }
+        _ => {}
+    };
+
+    let fraud_detection_key_for_hash = get_key_for_fraud_detection(hash);
+
+    if task_store.contains_key(&fraud_detection_key_for_hash) {
+        match task_store.get::<ResponseResult>(&fraud_detection_key_for_hash, &RetrievalMethod::GetOk) {
+            Ok(Maybe { data: Ok(ResponseResult::FraudClassification(FraudClassification { fraud_prediction, .. })), .. }) => {
+                if fraud_prediction < 0.7 {
+                    return true;
+                }else {
+                    return false;
+                }
+            }
+            Err(_) => { return false; }
+            _ => { return false; }
+        }
+    }
+    return false;
 }

@@ -131,3 +131,47 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
         false
     }
 }
+
+
+pub fn retrieve_embedded_data_from_links(task_store: &TaskMemoryStore, link_containing_text: &str) -> anyhow::Result<Vec<LinkToTextResult>> {
+
+    let mut extracted_links: Vec<String> = extract_links(link_containing_text);
+
+    let mut linked_text = Vec::new();
+
+    for i in 0..extracted_links.len() {
+        match get_embedded_data_from_link(task_store,&extracted_links[i]) {
+            Ok(Ok(link_to_text_result)) => {
+                linked_text.push(link_to_text_result);
+            }
+            Ok(Err(err)) => {
+                error!("Skipping: No result for: {}, reported error: {:?}",&extracted_links[i], err);
+            },
+            Err(err) => {
+                return Err(err);
+            }
+        }
+    }
+    Ok(linked_text)
+}
+
+
+pub fn get_embedded_data_from_link(task_store: &TaskMemoryStore, link: &str) -> anyhow::Result<anyhow::Result<LinkToTextResult>> {
+
+    let link_key = get_key_for_link_to_text(&link_to_id(&link.to_string()));
+    match task_store.get::<ResponseResult>(&link_key, &RetrievalMethod::GetOk) {
+        Ok(Maybe { data: Ok(ResponseResult::LinkToTextResult(link_to_text_result)), .. }) => {
+            Ok(Ok(link_to_text_result))
+        }
+        Ok(Maybe { data: Err(err), .. }) => {
+            Ok(Err(anyhow::anyhow!(err)))
+        }
+        Err(_) => {
+            Err(anyhow::anyhow!(format!("Error: Data not yet fetched for: {}",link)))
+        }
+        _ => {
+            error!("Error: Unreachable: incorrect ResponseResult type for {}",link);
+            panic!();
+        }
+    }
+}

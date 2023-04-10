@@ -27,6 +27,12 @@ impl <'a>CosmosRustBotStoreInquirer<'a> {
             QueryPart::AuthQueryPart(query_part) => {
                 self.verify_auth_token(query_part)
             }
+            /*
+            QueryPart::RequestTranslationQueryPart(query_part) => {
+
+            }
+            requests if the user is allowed / limits quota (user management)
+            */
         }
     }
 
