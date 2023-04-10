@@ -108,13 +108,13 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
         let result: anyhow::Result<LinkToTextResultIPC> = client_send_link_to_text_request("./tmp/rust_link_to_text_socket", link.to_owned());
         match result {
             Ok(data) => {
-                info!("Successfully obtained LinkToTextResult for key {}", key);
+                info!("Successfully obtained LinkToTextResult for link {}", link);
                 let response_result = Maybe {
                     data: Ok(ResponseResult::LinkToTextResult(LinkToTextResult::new(link, data.text_nodes, data.hierarchical_segmentation, 300))),
                     timestamp: Utc::now().timestamp(),
                 };
                 if let Err(error) = task_store.push(&key, response_result) {
-                    error!("Failed to insert response result for key {}: {:?}", key, error);
+                    error!("Failed to insert response result for link {}: {:?}", link, error);
                 }
                 true
             },
@@ -124,9 +124,9 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
                     timestamp: Utc::now().timestamp(),
                 };
                 if let Err(error) = task_store.push(&key, response_result) {
-                    error!("Failed to insert response result for key {}: {:?}", key, error);
+                    error!("Failed to insert response result for link {}: {:?}", link, error);
                 }
-                error!("Failed to obtain LinkToTextResult for key {}: {:?}", key, error);
+                error!("Failed to obtain LinkToTextResult for link {}: {:?}", link, error);
                 true
             }
         }
