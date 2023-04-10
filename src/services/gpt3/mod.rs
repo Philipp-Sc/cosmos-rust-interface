@@ -153,7 +153,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
 
                         match retrieve_context_from_description_and_community_link_to_text_results_for_prompt(&task_store, &description, TOPICS_FOR_EMBEDDING.iter().map(|&s| s.to_string()).collect()) {
                             Ok(context) => {
-                                info!("Successfully retrieved context for prompt. (hash: {})",hash);
+                                debug!("Successfully retrieved context for prompt. (hash: {})",hash);
                                 debug!("Context:\n{:?}", context);
 
                                 // SUMMARY
@@ -383,7 +383,7 @@ pub fn try_get_or_insert_chat_completion_result(task_store: &TaskMemoryStore, ke
         info!("Inserted GPT-3 chat completion result for {}", key);
         item = Ok(result);
     }else{
-        info!("GPT-3 chat completion result already exists for {}", key);
+        debug!("GPT-3 chat completion result already exists for {}", key);
     }
     match item {
         Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::ChatCompletionResult(result))), .. }) => {
@@ -429,7 +429,7 @@ pub fn try_get_or_insert_embedding_result(task_store: &TaskMemoryStore, key: &st
             item = Ok(result);
         }
         else{
-            info!("GPT-3 embedding result already exists for {}", key);
+            debug!("GPT-3 embedding result already exists for {}", key);
         }
         match item {
             Ok(Maybe { data: Ok(ResponseResult::OpenAIGPTResult(OpenAIGPTResult::EmbeddingResult(result))), .. }) => {
