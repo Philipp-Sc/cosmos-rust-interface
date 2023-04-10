@@ -24,7 +24,13 @@ pub fn extract_links(text: &str) -> Vec<String> {
     let links = LINK_FINDER.links(&text);
     let mut output: Vec<String> = Vec::new();
     for link in links  {
-        output.push(link.as_str().to_string());
+        if let s = link.as_str().to_string() {
+            if s.parse::<f64>().is_err() && s.chars().count() > 5 {
+                output.push(s);
+            }
+        }
+
+
     }
     // Convert the vector to a HashSet
     let set: HashSet<String> = output.into_iter().collect();
