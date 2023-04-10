@@ -25,12 +25,10 @@ pub fn extract_links(text: &str) -> Vec<String> {
     let mut output: Vec<String> = Vec::new();
     for link in links  {
         if let s = link.as_str().to_string() {
-            if s.parse::<f64>().is_err() && s.chars().count() > 5 {
+            if s.parse::<f64>().is_err() && s.chars().count() >= 8 && s.chars().any(|c| c.is_alphabetic()) {
                 output.push(s);
             }
         }
-
-
     }
     // Convert the vector to a HashSet
     let set: HashSet<String> = output.into_iter().collect();
@@ -133,7 +131,7 @@ pub fn insert_link_to_text_result(task_store: &TaskMemoryStore, key: &str, link:
             }
         }
     }else{
-        info!("Key {} already exists in task store. Skipping insertion", key);
+        debug!("Key {} already exists in task store.", key);
         false
     }
 }
