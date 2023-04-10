@@ -77,7 +77,7 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
         let id = each.get_proposal_id();
         let tally = get_tally(blockchain.clone(), id).await?;
 
-        let key1 = get_key_for_tally_result(each.to_hash());
+        let key1 = get_key_for_tally_result(each.object_to_hash());
 
 
         let result: Maybe<ResponseResult> = Maybe {

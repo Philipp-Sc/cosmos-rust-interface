@@ -143,7 +143,7 @@ pub async fn gpt3(task_store: TaskMemoryStore, key: String) -> anyhow::Result<Ta
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
                 for each in proposals.iter_mut().filter(|x| x.status == ProposalStatus::StatusVotingPeriod) {
-                    let hash = each.to_hash();
+                    let hash = each.object_to_hash();
 
                     if validate_fraud_detection_result(&task_store,hash) {
 

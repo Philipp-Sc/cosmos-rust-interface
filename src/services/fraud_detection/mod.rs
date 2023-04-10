@@ -53,7 +53,7 @@ pub async fn fraud_detection(task_store: TaskMemoryStore, key: String) -> anyhow
 
                 for each in proposals.iter_mut().filter(|x| x.status==ProposalStatus::StatusDepositPeriod || x.status==ProposalStatus::StatusVotingPeriod) {
 
-                    let hash = each.to_hash();
+                    let hash = each.object_to_hash();
                     let key_for_hash = get_key_for_fraud_detection(hash);
 
                     if !task_store.contains_key(&key_for_hash){ // TODO: need to check if OK or ERROR

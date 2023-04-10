@@ -59,9 +59,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
             for (mut proposal,origin,timestamp) in gov_proposals.into_iter().map(|x| (x, key.to_string(), timestamp.to_owned())) {
 
-                let proposal_hash = proposal.to_hash();
-
-                let hash = proposal.to_hash();
+                let hash = proposal.object_to_hash();
 
                 let tally_result = match task_store.get::<ResponseResult>(&get_key_for_tally_result(hash),&RetrievalMethod::GetOk){
                     Ok(Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::TallyResult(tally_result))), timestamp }) => {
@@ -143,15 +141,18 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     );
 
                 if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
-                    view.push(
+                        let id = proposal.status_based_id();
+
+                        view.push(
                         CosmosRustBotValue::Entry(Entry::Value(Value {
                             timestamp: timestamp.to_owned(),
                             origin: origin.to_owned(),
                             custom_data: CustomData::ProposalData(data),
-                            imperative: if list_proposal_hash.contains(&proposal_hash){
+                            // as long as the ProposalStatus stays the same, do not notify any subscription (i.e not send a second identical notification)
+                            imperative: if list_proposal_hash.contains(&id){
                                             ValueImperative::Update
                                         }else{
-                                            list_proposal_hash.push(proposal_hash);
+                                            list_proposal_hash.push(id);
                                             ValueImperative::Notify
                                         }
                         })));
