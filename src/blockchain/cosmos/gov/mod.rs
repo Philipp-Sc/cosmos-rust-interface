@@ -7,6 +7,8 @@ use crate::utils::entry::Maybe;
 use crate::utils::response::{BlockchainQuery, ResponseResult, TaskResult};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::time::Duration;
+use cosmos_rust_package::tokio::time::{Instant, sleep, sleep_until};
 
 
 const TALLY_RESULT_PREFIX: &str = "TALLY_RESULT";
@@ -47,6 +49,7 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
 
     loop {
 
+        let instance = Instant::now();
         let proposals = get_proposals(blockchain.clone(), status.clone(), next_key.clone()).await;
 
         // might return unavailable due to rate-limiting policy
@@ -85,6 +88,9 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
         }else{ // no pagination response | no next key
             break;
         }
+
+        // rate-limiting
+        sleep_until(instance + Duration::from_secs(10)).await;
     }
 
     Ok(TaskResult{ list_of_keys_modified: keys })
@@ -124,6 +130,7 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
 
     for mut each in values {
         let id = each.get_proposal_id();
+        let instance = Instant::now();
         let tally = get_tally(blockchain.clone(), id).await;
         let item = match tally {
             Ok(_) => {
@@ -147,6 +154,10 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
         };
         task_store.push(&key1, result)?;
         keys.push(key1);
+
+        // rate-limiting
+        sleep_until(instance + Duration::from_secs(10)).await;
+
     }
 
     Ok(TaskResult{ list_of_keys_modified: keys })
