@@ -142,15 +142,17 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
 
                 if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
 
+                        let unique_id = proposal.get_unique_proposal_id();
+
                         view.push(
                         CosmosRustBotValue::Entry(Entry::Value(Value {
                             timestamp: timestamp.to_owned(),
                             origin: origin.to_owned(),
                             custom_data: CustomData::ProposalData(data),
-                            imperative: if list_proposal_hash.contains(&hash){
+                            imperative: if list_proposal_hash.contains(&unique_id){
                                             ValueImperative::Update
                                         }else{
-                                            list_proposal_hash.push(hash);
+                                            list_proposal_hash.push(unique_id);
                                             ValueImperative::Notify
                                         }
                         })));
