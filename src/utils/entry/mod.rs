@@ -520,6 +520,10 @@ impl ProposalData {
                   color: #fff;
                 }
 
+                .content-title {
+                  white-space: pre-wrap;
+                }
+
                 label {
                   font-weight: bold;
                   margin-right: 5px;

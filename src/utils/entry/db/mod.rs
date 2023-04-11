@@ -292,21 +292,23 @@ impl CosmosRustBotStore {
                         self.entry_store.0.db.insert(&key, value).ok();
 
                         if let Entry::Value(Value { timestamp: _, origin: _, custom_data: CustomData::ProposalData(proposal_data), imperative: _ }) = entry.clone() {
+                            let path = format!("{}/{}",proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+
                             // filesystem sync of generated files for proposal data
-                            let file_path = format!("./tmp/public/en/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            let file_path = format!("./tmp/public/en/{}.json", &path);
                             match std::fs::write(&file_path, serde_json::to_string_pretty(&proposal_data.generate_map()).unwrap()) {
                                 Ok(_) => {},
                                 Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
                             };
 
                             // write governance proposal as HTML page
-                            let file_path = format!("./tmp/governance_proposals/{}/{}.html", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            let file_path = format!("./tmp/governance_proposals/{}.html", &path);
                             match std::fs::write(&file_path, proposal_data.generate_html()) {
                                 Ok(_) => {},
                                 Err(err) => { error!("Unable to write {}, Error: {}", &file_path,err.to_string()); },
                             };
                             // write the fraud prediction to a JSON
-                            let file_path = format!("./tmp/fraud_detection/{}/{}.json", proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+                            let file_path = format!("./tmp/fraud_detection/{}.json", &path);
                             let json_string = json!({"title": proposal_data.proposal_title, "description": proposal_data.proposal_description, "fraud_prediction": proposal_data.fraud_risk}).to_string();
                             match std::fs::write(&file_path, json_string) {
                                 Ok(_) => {},
@@ -374,8 +376,9 @@ impl CosmosRustBotStore {
         let mut copy_self = self.clone();
         cosmos_rust_package::tokio::spawn(async move {
 
-            // Delay the task for 5 minute (5*60 seconds)
+            // Delay the task for 5 minutes
             // Reason: This delay allows the state to get up-to-date first.
+            // TODO: find a better solution
             sleep(Duration::from_secs(5*60)).await;
 
             copy_self.subscription_store.register_subscriber().unwrap();
