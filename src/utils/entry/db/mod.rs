@@ -282,6 +282,8 @@ impl CosmosRustBotStore {
         self.entry_store.remove_entries_not_in_items(&items); // outdated entries/indices
         self.index_store.remove_indices_not_in_items(&items);
 
+
+        info!("Updating data..");
         for item in &items {
 
             match item {  // insert updated entries/indices (hash/key changed)
@@ -292,7 +294,10 @@ impl CosmosRustBotStore {
                         self.entry_store.0.db.insert(&key, value).ok();
 
                         if let Entry::Value(Value { timestamp: _, origin: _, custom_data: CustomData::ProposalData(proposal_data), imperative: _ }) = entry.clone() {
+
                             let path = format!("{}/{}",proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
+
+                            info!("Updating data, writing to path: {}",&path);
 
                             // filesystem sync of generated files for proposal data
                             let file_path = format!("./tmp/public/en/{}.json", &path);
