@@ -2,6 +2,7 @@ use crate::utils::entry::*;
 use cosmos_rust_package::chrono::Utc;
 use std::collections::HashMap;
 use std::iter::FilterMap;
+use log::info;
 
 pub mod socket;
 
@@ -151,9 +152,12 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         }
 
                         if let Some(user_hash) = n.query.settings_part.user_hash {
+                            info!("Notification is out for {}: {:?}",&user_hash,&msg);
                             insert_notify(db, msg, buttons, user_hash);
                         } else {
+                            info!("Batch Notifications for {:?}",n.user_list);
                             for user_hash in n.user_list {
+                                info!("Batch: Notification is out for {}: {:?}",&user_hash,&msg);
                                 insert_notify(db, msg.to_owned(), buttons.clone(), user_hash);
                             }
                         }
