@@ -5,6 +5,8 @@ use cosmos_rust_package::api::custom::types::gov::proposal_ext::{ProposalExt, Pr
 use crate::utils::entry::db::{RetrievalMethod, TaskMemoryStore};
 use crate::utils::entry::Maybe;
 use crate::utils::response::{BlockchainQuery, ResponseResult, TaskResult};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 
 const TALLY_RESULT_PREFIX: &str = "TALLY_RESULT";
@@ -18,20 +20,53 @@ pub fn get_key_for_params(blockchain_name: &str, params_type: &str) -> String {
     format!("{}_{}_{}",PARAMS_PREFIX,blockchain_name,params_type)
 }
 
+fn hash_vec_u8(vec: &Vec<u8>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    vec.hash(&mut hasher);
+    hasher.finish()
+}
 
 // TODO: WARNING: if the page count were to decrease for some reason, database will have orphan entries!
 pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalStatus,task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
 
+    let continue_at_key = format!("fetch_proposals_for_{}",key);
+
     let mut keys: Vec<String> = Vec::new();
 
-    let mut next_key = None;
-    let mut count = 1usize;
+    let mut next_key = match task_store.get::<ResponseResult>(&continue_at_key,&RetrievalMethod::Get) {
+        Ok(item) => {
+            match item {
+                Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtKey(key))), .. } => {
+                    key
+                },
+                _ => {None}
+            }
+        },
+        Err(_) => {None}
+    };
 
     loop {
 
-        let key1 = format!("page_{}_{}", count, key);
+        let res = get_proposals(blockchain.clone(), status.clone(), next_key.clone()).await;
 
-        let res = get_proposals(blockchain.clone(), status.clone(), next_key.clone()).await?;
+        // might return unavailable due to rate-limiting policy
+        // which makes starting at the beginning over and over inefficient
+        // therefore saving continue key
+        let item = match res {
+            Ok(_) => {
+                // reset continue key
+                Maybe{ data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtKey(None))), timestamp: Utc::now().timestamp() }
+            },
+            Err(_) => {
+                // save continue key.
+                Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtKey(next_key.clone()))), timestamp: Utc::now().timestamp() }
+            }
+        };
+        task_store.push(&continue_at_key,item)?;
+        let res = res?;
+
+
+        let key1 = format!("page_key_{}_{}", next_key.map(|x| hash_vec_u8(&x)).unwrap_or(0) , key);
 
         let result: Maybe<ResponseResult> = Maybe {
             data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(res.1))),
@@ -51,7 +86,6 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
         }else{ // no pagination response | no next key
             break;
         }
-        count += 1;
     }
 
     Ok(TaskResult{ list_of_keys_modified: keys })
