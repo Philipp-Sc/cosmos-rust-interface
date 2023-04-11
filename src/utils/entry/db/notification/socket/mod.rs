@@ -4,13 +4,14 @@ use crate::utils::entry::CosmosRustServerValue;
 use std::collections::HashSet;
 use super::super::socket::{client_send_request, Handler, spawn_socket_service};
 use std::thread::JoinHandle;
+use log::info;
 
 use serde::{Serialize,Deserialize};
 
 pub fn spawn_socket_notification_server(socket_path: &str, tree: &sled::Db) -> JoinHandle<()> {
-    println!("Spawning Unix domain socket Notification server at '{}'", socket_path);
+    info!("Spawning Unix domain socket Notification server at '{}'", socket_path);
     let task = spawn_socket_service(socket_path, Box::new(NotificationHandler{tree:tree.clone()}) as Box<dyn Handler + Send>);
-    println!("Spawned Unix domain socket Notification server ready");
+    info!("Spawned Unix domain socket Notification server ready");
     task
 }
 pub struct NotificationHandler
@@ -30,7 +31,7 @@ impl Handler for NotificationHandler
     }
 }
 pub fn client_send_notification_request(socket_path: &str, request: CosmosRustServerValue) -> anyhow::Result<NotifyResult> {
-    println!("Sending notification request to Notification service at '{}'", socket_path);
+    info!("Sending notification request to Notification service at '{}': {:?}", socket_path, &request);
     client_send_request(socket_path,request)
 }
 
