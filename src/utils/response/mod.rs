@@ -136,6 +136,7 @@ pub struct FraudClassification {
 #[derive(Serialize,Deserialize,Debug, Clone, EnumAsInner)]
 pub enum BlockchainQuery {
     ContinueAtKey(Option<Vec<u8>>),
+    ContinueAtIndex(Option<u64>),
     GovProposals(Vec<ProposalExt>),
     TallyResult(TallyResultExt),
     Params(ParamsExt),

@@ -47,12 +47,12 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
 
     loop {
 
-        let res = get_proposals(blockchain.clone(), status.clone(), next_key.clone()).await;
+        let proposals = get_proposals(blockchain.clone(), status.clone(), next_key.clone()).await;
 
         // might return unavailable due to rate-limiting policy
         // which makes starting at the beginning over and over inefficient
         // therefore saving continue key
-        let item = match res {
+        let item = match proposals {
             Ok(_) => {
                 // reset continue key
                 Maybe{ data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtKey(None))), timestamp: Utc::now().timestamp() }
@@ -63,18 +63,17 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
             }
         };
         task_store.push(&continue_at_key,item)?;
-        let res = res?;
-
+        let proposals = proposals?;
 
         let key1 = format!("page_key_{}_{}", next_key.map(|x| hash_vec_u8(&x)).unwrap_or(0) , key);
 
         let result: Maybe<ResponseResult> = Maybe {
-            data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(res.1))),
+            data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(proposals.1))),
             timestamp: Utc::now().timestamp(),
         };
         task_store.push(&key1, result)?;
 
-        next_key = res.0.clone();
+        next_key = proposals.0.clone();
 
         keys.push(key1);
 
@@ -91,7 +90,21 @@ pub async fn fetch_proposals(blockchain: SupportedBlockchain,status: ProposalSta
     Ok(TaskResult{ list_of_keys_modified: keys })
 }
 
-pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: ProposalStatus, task_store: TaskMemoryStore, _key: String) -> anyhow::Result<TaskResult> {
+pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: ProposalStatus, task_store: TaskMemoryStore, key: String) -> anyhow::Result<TaskResult> {
+
+    let continue_at_key = format!("fetch_tally_results_for_{}",key);
+
+    let next_index = match task_store.get::<ResponseResult>(&continue_at_key,&RetrievalMethod::Get) {
+        Ok(item) => {
+            match item {
+                Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtIndex(index))), .. } => {
+                    index
+                },
+                _ => {None}
+            }
+        },
+        Err(_) => {None}
+    };
 
     let mut keys: Vec<String> = Vec::new();
 
@@ -100,16 +113,30 @@ pub async fn fetch_tally_results(blockchain: SupportedBlockchain, status: Propos
     for (_val_key, val) in task_store.value_iter::<ResponseResult>(&RetrievalMethod::GetOk) {
         match val {
             Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::GovProposals(mut proposals))), timestamp } => {
-                for each in proposals.into_iter().filter(|x| x.status == status && x.blockchain.name == blockchain.name) {
+                for each in proposals.into_iter().filter(|x| x.status == status && x.blockchain.name == blockchain.name && (next_index.is_none() || x.get_proposal_id() >= next_index.unwrap())) {
                     values.push(each);
                 }
             }
             _ => {}
         }
     }
+    values.sort_by_key(|k| k.get_proposal_id());
+
     for mut each in values {
         let id = each.get_proposal_id();
-        let tally = get_tally(blockchain.clone(), id).await?;
+        let tally = get_tally(blockchain.clone(), id).await;
+        let item = match tally {
+            Ok(_) => {
+                // reset continue key
+                Maybe{ data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtIndex(None))), timestamp: Utc::now().timestamp() }
+            },
+            Err(_) => {
+                // save continue key.
+                Maybe { data: Ok(ResponseResult::Blockchain(BlockchainQuery::ContinueAtIndex(Some(id)))), timestamp: Utc::now().timestamp() }
+            }
+        };
+        task_store.push(&continue_at_key,item)?;
+        let tally = tally?;
 
         let key1 = get_key_for_tally_result(each.object_to_hash());
 
