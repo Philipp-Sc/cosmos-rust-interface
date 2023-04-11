@@ -31,7 +31,7 @@ impl Handler for NotificationHandler
     }
 }
 pub fn client_send_notification_request(socket_path: &str, request: CosmosRustServerValue) -> anyhow::Result<NotifyResult> {
-    info!("Sending notification request to Notification service at '{}': {:?}", socket_path, &request);
+    info!("Sending notification request to Notification service at '{}': {:?}", socket_path, &request.key());
     client_send_request(socket_path,request)
 }
 
