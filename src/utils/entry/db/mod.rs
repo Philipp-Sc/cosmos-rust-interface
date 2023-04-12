@@ -297,7 +297,7 @@ impl CosmosRustBotStore {
 
                             let path = format!("{}/{}",proposal_data.proposal_blockchain.to_lowercase(), proposal_data.proposal_id);
 
-                            info!("Updating data, writing to path: {}",&path);
+                            //info!("Updating data, writing to path: {}",&path);
 
                             // filesystem sync of generated files for proposal data
                             let file_path = format!("./tmp/public/en/{}.json", &path);
