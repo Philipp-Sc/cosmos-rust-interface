@@ -283,7 +283,7 @@ impl CosmosRustBotStore {
         self.index_store.remove_indices_not_in_items(&items);
 
 
-        info!("Updating data..");
+        //info!("Updating data..");
         for item in &items {
 
             match item {  // insert updated entries/indices (hash/key changed)
