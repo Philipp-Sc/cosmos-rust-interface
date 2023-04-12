@@ -119,51 +119,9 @@ impl CustomData {
             }
         }
     }
-    fn status_display(&self) -> String {
-        match &self {
-            CustomData::ProposalData(o) => {
-                o.proposal_state.to_owned()
-            },
-            _ => {
-                "Error: Can not display status for self.".to_string()
-            }
-        }
-    }
-    fn briefing_display(&self, index: usize) -> String {
-        match &self {
-            CustomData::ProposalData(o) => {
-                //o.proposal_briefings[index].to_owned()
-                "".to_string()
-            },
-            _ => {
-                "Error: Can not display summary for self.".to_string()
-            }
-        }
-    }
-    fn content_display(&self) -> String {
-        match &self {
-            CustomData::ProposalData(o) => {
-                o.proposal_preview_msg.to_owned()
-            },
-            _ => {
-                "Error: Can not display content for self.".to_string()
-            }
-        }
-    }
     fn display(&self, display: &str) -> String {
         match display {
-            "default" => self.default_display(),
-            "status" => self.status_display(),
-            "content" => self.content_display(),
-            _ => {
-                if display.contains("briefing") {
-                    let briefing_index = display["briefing".len()..].to_string().parse::<u8>().unwrap_or(0u8);
-                    "briefing_display deprecatd".to_string()
-                    //self.briefing_display(briefing_index as usize)
-                }else{
-                    self.default_display()
-                }
-            },
+            _ => self.default_display(),
         }
     }
 

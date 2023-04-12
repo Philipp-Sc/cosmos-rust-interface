@@ -333,14 +333,14 @@ impl CosmosRustBotStore {
             };
         }
 
-        self.update_outdated_subscriptions();
+        self.set_action_param_for_outdated_subscriptions();
 
     }
 
-    fn update_outdated_subscriptions(&mut self) {
+    fn set_action_param_for_outdated_subscriptions(&mut self) {
         // refreshing subscriptions by updating them if their content changed.
         for mut subscription in self.subscription_store.get_subscriptions() {
-            if self.subscription_outdated(&mut subscription){
+            if self.check_and_update_outdated_subscription(&mut subscription){
                 subscription.action = SubscriptionAction::Update;
                 let item = CosmosRustBotValue::Subscription(subscription);
                 let key = item.key();
@@ -350,28 +350,34 @@ impl CosmosRustBotStore {
         }
     }
 
-    fn subscription_outdated(&mut self, subscription: &mut Subscription) -> bool {
+    fn check_and_update_outdated_subscription(&mut self, subscription: &mut Subscription) -> bool {
+        // if the query result changed update the subscription
 
         if let QueryPart::EntriesQueryPart(query_part) = &subscription.query
         {
-            let query_result = CosmosRustBotStoreInquirer(&self).entries_query(query_part);
+            let query_result: Vec<CosmosRustBotValue> = CosmosRustBotStoreInquirer(&self).entries_query(query_part);
 
             let mut added_items = false;
             let mut removed_items = false;
 
-            let filtered_keys =
+            let selected_keys =
                 query_result.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
-            for e in &filtered_keys {
-                if !subscription.list.contains(&e) {
-                    added_items = true;
-                    subscription.list.push(e.clone());
-                }
-            }
+
+            // remove outdated keys
             let len = subscription.list.len();
-            subscription.list.retain(|x| filtered_keys.contains(x));
+            subscription.list.retain(|x| selected_keys.contains(x));
             if len != subscription.list.len() {
                 removed_items = true;
             }
+
+            // add new keys
+            for e in selected_keys {
+                if !subscription.list.contains(&e) {
+                    added_items = true;
+                    subscription.list.push(e);
+                }
+            }
+
             return added_items || removed_items;
         }
         false
@@ -391,7 +397,7 @@ impl CosmosRustBotStore {
             while let Some(updated) = copy_self.subscription_store.get_next_updated() {
 
                 if let Ok(CosmosRustBotValue::Subscription(s)) = updated {
-                    if s.action == SubscriptionAction::Update  {
+                    if s.action == SubscriptionAction::Update  {  // only subscriptions that have been marked for update
 
                         let query: UserQuery = UserQuery::new(s.query);
 

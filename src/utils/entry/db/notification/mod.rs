@@ -99,6 +99,8 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
 
                     let command = format!("/{}",query_part.message.replace(" ", "_"));
 
+                    info!("Notification had command: {:?}",command);
+
                     if let Some(user_hash) = n.query.settings_part.user_hash {
                         if n.query.settings_part.subscribe.unwrap_or(false) {
                             insert_notify(db, vec![format!("Subscribed\n{}", command)], vec![], user_hash);
@@ -152,12 +154,9 @@ pub fn notify_sled_db(db: &sled::Db, notification: CosmosRustServerValue) {
                         }
 
                         if let Some(user_hash) = n.query.settings_part.user_hash {
-                            info!("Notification is out for {}: {:?}",&user_hash,&msg);
                             insert_notify(db, msg, buttons, user_hash);
                         } else {
-                            info!("Batch Notifications for {:?}",n.user_list);
                             for user_hash in n.user_list {
-                                info!("Batch: Notification is out for {}: {:?}",&user_hash,&msg);
                                 insert_notify(db, msg.to_owned(), buttons.clone(), user_hash);
                             }
                         }

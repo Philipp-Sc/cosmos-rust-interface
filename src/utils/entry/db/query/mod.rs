@@ -36,7 +36,7 @@ impl <'a>CosmosRustBotStoreInquirer<'a> {
         }
     }
 
-    pub fn entries_query(&mut self, query_part: &EntriesQueryPart) -> Vec<CosmosRustBotValue> {
+    pub fn entries_query(&self, query_part: &EntriesQueryPart) -> Vec<CosmosRustBotValue> {
 
         // Clone the filter in query_part to avoid any modifications to the original filter
         let mut filter = query_part.filter.clone();
