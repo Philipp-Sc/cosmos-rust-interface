@@ -1196,6 +1196,26 @@ pub enum QueryPart {
     EntriesQueryPart(EntriesQueryPart),
     SubscriptionsQueryPart(SubscriptionsQueryPart)
 }
+
+impl Display for QueryPart {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            QueryPart::RegisterQueryPart(_register_query_part) => {
+                write!(f, "RegisterQueryPart()")
+            }
+            QueryPart::AuthQueryPart(_auth_query_part) => {
+                write!(f, "AuthQueryPart(..)")
+            }
+            QueryPart::EntriesQueryPart(entries_query_part) => {
+                write!(f, "EntriesQueryPart({})", entries_query_part.message)
+            }
+            QueryPart::SubscriptionsQueryPart(_subscriptions_query_part) => {
+                write!(f, "SubscriptionsQueryPart(..)")
+            }
+        }
+    }
+}
+
 impl Hash for QueryPart {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match &self {

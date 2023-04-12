@@ -352,22 +352,20 @@ impl CosmosRustBotStore {
 
     fn check_and_update_outdated_subscription(&mut self, subscription: &mut Subscription) -> bool {
         // if the query result changed update the subscription
-
-        if let QueryPart::EntriesQueryPart(query_part) = &subscription.query
-        {
+        if let QueryPart::EntriesQueryPart(query_part) = &subscription.query {
             let query_result: Vec<CosmosRustBotValue> = CosmosRustBotStoreInquirer(&self).entries_query(query_part);
 
             let mut added_items = false;
             let mut removed_items = false;
 
-            let selected_keys =
-                query_result.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
+            let selected_keys = query_result.iter().map(|x| x.key()).collect::<Vec<Vec<u8>>>();
 
             // remove outdated keys
             let len = subscription.list.len();
             subscription.list.retain(|x| selected_keys.contains(x));
             if len != subscription.list.len() {
                 removed_items = true;
+                info!("Removed outdated keys from subscription: {}",&subscription.query);
             }
 
             // add new keys
@@ -375,12 +373,19 @@ impl CosmosRustBotStore {
                 if !subscription.list.contains(&e) {
                     added_items = true;
                     subscription.list.push(e);
+                    info!("Added new key to subscription: {}",&subscription.query);
                 }
             }
 
-            return added_items || removed_items;
+            if added_items || removed_items {
+                info!("Updated subscription: {}",&subscription.query);
+                return true;
+            } else {
+                debug!("No changes made to subscription: {}",&subscription.query);
+            }
         }
-        false
+
+        return false;
     }
 
     pub fn spawn_notify_on_subscription_update_task(&mut self) -> cosmos_rust_package::tokio::task::JoinHandle<()> {
