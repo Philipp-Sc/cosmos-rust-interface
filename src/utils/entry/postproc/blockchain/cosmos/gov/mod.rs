@@ -141,7 +141,7 @@ fn add_proposals(view: &mut Vec<CosmosRustBotValue>, task_store: &TaskMemoryStor
                     );
 
                 if fraud_classification.is_some() || (proposal.status!=ProposalStatus::StatusVotingPeriod && proposal.status!=ProposalStatus::StatusDepositPeriod) {
-                    
+
                         view.push(
                         CosmosRustBotValue::Entry(Entry::Value(Value {
                             timestamp: timestamp.to_owned(),

@@ -8,7 +8,7 @@ pub mod socket;
 
 // TODO: the whole thing needs to be refactored into a NotificationStore struct.
 
-const CRB_USER_META_DATA_STORE_JSON: &str = "./tmp/cosmos_rust_telegram_bot_user_meta_data.json";
+pub const CRB_USER_META_DATA_STORE_JSON: &str = "./tmp/cosmos_rust_telegram_bot_user_meta_data.json";
 
 pub fn get_user_meta_data(db: &sled::Db) -> impl Iterator<Item = UserMetaData> {
 
